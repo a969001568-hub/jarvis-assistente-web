@@ -114,3 +114,16 @@
 @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.14); } }
 @keyframes blink { 50% { opacity: 0; } }
 .caret::after { content: "▍"; animation: blink 1s steps(1) infinite; color: var(--glow); }
+
+/* iOS-style widgets */
+.widget {
+  border-radius: 1.4rem;
+  padding: 0.9rem 1rem;
+  background: linear-gradient(160deg, oklch(0.26 0.05 230 / 0.75), oklch(0.17 0.035 238 / 0.6));
+  border: 1px solid oklch(0.82 0.14 210 / 0.18);
+  backdrop-filter: blur(18px) saturate(1.4);
+  box-shadow: 0 10px 30px oklch(0 0 0 / 0.35), inset 0 1px 0 oklch(1 0 0 / 0.08);
+  min-height: 7rem;
+}
+.widget-weather { background: linear-gradient(160deg, oklch(0.55 0.13 235 / 0.8), oklch(0.3 0.09 245 / 0.75)); }
+.widget-label { font-size: 0.7rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-muted-foreground); margin-bottom: 0.25rem; }

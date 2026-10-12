@@ -13,8 +13,9 @@ export const Route = createFileRoute("/api/speech")({
         } catch {}
         if (!text) return Response.json({ error: "Texto vazio." }, { status: 400 });
         const prompt =
-          "Leia em português brasileiro, com voz masculina grave, calma e elegante, " +
-          "como um mordomo britânico refinado e levemente irônico, ritmo sereno: " + text;
+          "Fale em português brasileiro de forma natural e conversacional, voz masculina calma, " +
+          "tom seco e levemente irônico, sem dramatizar nem exagerar a entonação. " +
+          "Ritmo fluido e um pouco ágil, emendando as frases, com pausas bem curtas nos pontos finais: " + text;
         try {
           const upstream = await requestSpeech(
             {
@@ -22,7 +23,7 @@ export const Route = createFileRoute("/api/speech")({
               apiKey,
               model: "google/gemini-3.1-flash-tts-preview",
               format: "gemini",
-              voice: "Charon",
+              voice: "Iapetus",
             },
             prompt,
             false,

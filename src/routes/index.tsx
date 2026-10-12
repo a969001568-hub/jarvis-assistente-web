@@ -121,7 +121,13 @@ function Jarvis() {
     rec.onend = () => {
       setInterim("");
       const said = final.trim();
-      if (said) send(said);
+      const wake = /\b(jarvis|jarvi|jarbas|jarves|djarvis|jarvas)\b/i;
+      if (said && wake.test(said)) send(said);
+      else if (said) {
+        // Sem o nome "Jarvis": ignora e continua ouvindo em silêncio.
+        if (handsFreeRef.current && !busyRef.current) setTimeout(startListening, 250);
+        else setState("idle");
+      }
       else if (handsFreeRef.current && !busyRef.current) setTimeout(startListening, 250);
       else setState((s) => (s === "listening" ? "idle" : s));
     };
@@ -303,7 +309,7 @@ function Jarvis() {
               <span className={state === "thinking" || state === "listening" ? "caret" : ""}>{live}</span>
             ) : (
               <span className="text-muted-foreground">
-                {supported ? "Toque no núcleo ou ative o modo mãos livres e simplesmente fale." : "Reconhecimento de voz indisponível neste navegador. Use o Google Chrome."}
+                {supported ? "Ative o modo mãos livres e diga \"Jarvis\" seguido do seu pedido." : "Reconhecimento de voz indisponível neste navegador. Use o Google Chrome."}
               </span>
             )}
           </div>

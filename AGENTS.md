@@ -12,5 +12,5 @@
 ## Architecture
 - AI chat lives in the server route src/routes/api/chat.ts (Lovable AI Gateway, NDJSON stream); keys stay server-side.
 - Web search uses keyless RSS (Bing + Google News) on every user message; no search API key needed.
-- Voice in/out uses the browser Web Speech API (Chrome) — no server audio processing.
+- Voice input uses the browser Web Speech API; voice output streams AI TTS from src/routes/api/speech.ts, falling back to Chrome speechSynthesis on failure.
 - Conversation memory is kept in localStorage (limited, exportable as JSON).

@@ -63,6 +63,7 @@ function Jarvis() {
   const busyRef = useRef(false);
   const messagesRef = useRef<Msg[]>([]);
   const abortRef = useRef<AbortController | null>(null);
+  const speechAbortRef = useRef<AbortController | null>(null);
   const logRef = useRef<HTMLDivElement>(null);
 
   messagesRef.current = messages;

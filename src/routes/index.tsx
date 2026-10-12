@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { ClockWidget, NewsWidget, StatusWidget, WeatherWidget } from "@/components/Widgets";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 export const Route = createFileRoute("/")({
@@ -20,7 +21,7 @@ type Source = { title: string; url: string; snippet: string };
 type State = "idle" | "listening" | "thinking" | "speaking" | "error";
 
 const MEM_KEY = "jarvis_memoria";
-const MAX_MEM = 30;
+const MAX_MEM = 200;
 const STATE_LABEL: Record<State, string> = {
   idle: "Em espera",
   listening: "Ouvindo",
@@ -54,7 +55,6 @@ function Jarvis() {
   const [error, setError] = useState("");
   const [voiceOn, setVoiceOn] = useState(true);
   const [handsFree, setHandsFree] = useState(false);
-  const [text, setText] = useState("");
   const [supported, setSupported] = useState(true);
   const [weather, setWeather] = useState<string>("");
 
@@ -272,11 +272,11 @@ function Jarvis() {
           <h1 className="mt-1 font-display text-2xl font-bold tracking-widest text-primary text-glow">J.A.R.V.I.S.</h1>
           <p className="text-sm text-muted-foreground">Just A Rather Very Intelligent System</p>
         </div>
-        <div className="space-y-2 text-sm">
-          <Row k="Estado" v={STATE_LABEL[state]} hi />
-          <Row k="Microfone" v={supported ? "Disponível" : "Use o Chrome"} />
-          <Row k="Clima · Sant. Parnaíba" v={weather || "…"} />
-          <Row k="Memória" v={`${messages.length}/${MAX_MEM}`} />
+        <div className="grid grid-cols-2 gap-3">
+          <ClockWidget />
+          <WeatherWidget />
+          <StatusWidget state={STATE_LABEL[state]} mem={messages.length} max={MAX_MEM} />
+          <NewsWidget />
         </div>
         <div className="space-y-2">
           <Toggle label="Voz do JARVIS" on={voiceOn} onClick={() => { setVoiceOn(!voiceOn); window.speechSynthesis?.cancel(); speechAbortRef.current?.abort(); }} />
@@ -316,18 +316,6 @@ function Jarvis() {
           {error && <div className="hud-panel border-destructive px-4 py-2 text-destructive">{error}</div>}
         </div>
 
-        <form
-          className="hud-panel flex w-full max-w-2xl gap-2 p-2"
-          onSubmit={(e) => { e.preventDefault(); const t = text.trim(); if (t) { setText(""); send(t); } }}
-        >
-          <input
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder="Ou escreva para o JARVIS…"
-            className="flex-1 bg-transparent px-3 py-2 text-lg outline-none placeholder:text-muted-foreground"
-          />
-          <HudButton type="submit" disabled={!text.trim()}>Enviar</HudButton>
-        </form>
       </main>
 
       {/* Painel direito */}

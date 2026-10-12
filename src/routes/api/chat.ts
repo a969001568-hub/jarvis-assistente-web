@@ -58,7 +58,7 @@ export const Route = createFileRoute("/api/chat")({
           const body = await request.json();
           messages = (body.messages ?? [])
             .filter((m: Msg) => (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
-            .slice(-12)
+            .slice(-40)
             .map((m: Msg) => ({ role: m.role, content: m.content.slice(0, 4000) }));
         } catch {
           return Response.json({ error: "Requisição inválida." }, { status: 400 });

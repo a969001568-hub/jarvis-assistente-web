@@ -63,6 +63,7 @@ function Jarvis() {
   const busyRef = useRef(false);
   const messagesRef = useRef<Msg[]>([]);
   const abortRef = useRef<AbortController | null>(null);
+  const speechAbortRef = useRef<AbortController | null>(null);
   const logRef = useRef<HTMLDivElement>(null);
 
   messagesRef.current = messages;
@@ -129,10 +130,9 @@ function Jarvis() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const speak = useCallback((t: string) => new Promise<void>((resolve) => {
+  const speakChrome = useCallback((clean: string) => new Promise<void>((resolve) => {
     const synth = window.speechSynthesis;
-    const clean = cleanForSpeech(t);
-    if (!synth || !clean) return resolve();
+    if (!synth) return resolve();
     synth.cancel();
     const u = new SpeechSynthesisUtterance(clean);
     const v = pickVoice();
@@ -142,9 +142,27 @@ function Jarvis() {
     u.pitch = 0.85;
     u.onend = () => resolve();
     u.onerror = () => resolve();
-    setState("speaking");
     synth.speak(u);
   }), []);
+
+  const speak = useCallback(async (t: string) => {
+    const clean = cleanForSpeech(t);
+    if (!clean) return;
+    setState("speaking");
+    const ctrl = new AbortController();
+    speechAbortRef.current = ctrl;
+    try {
+      const { streamSpeech } = await import("@/lib/stream-speech");
+      await streamSpeech("/api/speech", clean.slice(0, 2400), ctrl.signal);
+    } catch (e: any) {
+      if (ctrl.signal.aborted) return;
+      console.warn("Voz de IA falhou, usando voz do Chrome", e);
+      setError("A voz de IA falhou nesta resposta; usando a voz do Chrome.");
+      await speakChrome(clean);
+    } finally {
+      speechAbortRef.current = null;
+    }
+  }, [speakChrome]);
 
   const send = useCallback(async (content: string) => {
     if (busyRef.current) return;
@@ -222,6 +240,7 @@ function Jarvis() {
   const stopAll = () => {
     abortRef.current?.abort();
     window.speechSynthesis?.cancel();
+    speechAbortRef.current?.abort();
     try { recRef.current?.abort(); } catch {}
     setHandsFree(false);
     setState("idle");
@@ -254,7 +273,7 @@ function Jarvis() {
           <Row k="Memória" v={`${messages.length}/${MAX_MEM}`} />
         </div>
         <div className="space-y-2">
-          <Toggle label="Voz do JARVIS" on={voiceOn} onClick={() => { setVoiceOn(!voiceOn); window.speechSynthesis?.cancel(); }} />
+          <Toggle label="Voz do JARVIS" on={voiceOn} onClick={() => { setVoiceOn(!voiceOn); window.speechSynthesis?.cancel(); speechAbortRef.current?.abort(); }} />
           <Toggle label="Mãos livres (escuta contínua)" on={handsFree} onClick={toggleHandsFree} disabled={!supported} />
         </div>
         <div className="mt-auto grid grid-cols-2 gap-2">

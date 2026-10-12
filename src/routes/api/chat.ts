@@ -15,7 +15,7 @@ const SYSTEM = `Você é J.A.R.V.I.S., assistente pessoal de inteligência artif
 
 const decode = (s: string) =>
   s.replace(/<!\[CDATA\[|\]\]>/g, "").replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").replace(/&quot;/g, '"')
-    .replace(/&#39;|&#x27;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&nbsp;/g, " ").trim();
+    .replace(/&#39;|&#x27;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&nbsp;/g, " ").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 
 async function rss(url: string, limit: number): Promise<Source[]> {
   try {

@@ -1,4 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { z } from "zod";
+import { commandMode, getForecast, WEATHER_PLACES } from "@/lib/jarvis-context";
+import { createLovableAiGatewayRunIdFetch, getLovableAiGatewayRunId, getLovableAiGatewayResponseHeaders } from "@/lib/gateway-run-id.server";
 
 type Msg = { role: "user" | "assistant"; content: string };
 type Source = { title: string; url: string; snippet: string };
@@ -54,32 +57,42 @@ export const Route = createFileRoute("/api/chat")({
         const apiKey = process.env["LOVABLE_API_KEY"];
         if (!apiKey) return Response.json({ error: "Chave de IA não configurada." }, { status: 401 });
         let messages: Msg[] = [];
+        let memory = "";
         try {
-          const body = await request.json();
-          messages = (body.messages ?? [])
-            .filter((m: Msg) => (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
-            .slice(-40)
-            .map((m: Msg) => ({ role: m.role, content: m.content.slice(0, 4000) }));
+          const body = z.object({ messages: z.array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().min(1).max(4000) })).min(1).max(80), memory: z.string().max(14000).optional() }).parse(await request.json());
+          messages = body.messages.slice(-60);
+          memory = body.memory ?? "";
         } catch {
           return Response.json({ error: "Requisição inválida." }, { status: 400 });
         }
         const last = [...messages].reverse().find((m) => m.role === "user");
         if (!last) return Response.json({ error: "Mensagem vazia." }, { status: 400 });
 
-        const sources = await searchWeb(last.content);
+        const mode = commandMode(last.content);
+        const query = last.content.replace(/\b(jarvis|jarvi|jarbas|jarves|djarvis|jarvas)\b/gi, "").replace(/desenvolva[.!?\s]*$/i, "").trim();
+        const [sources, forecasts, code] = await Promise.all([
+          mode === "briefing" ? Promise.all([searchWeb("política Brasil hoje"), searchWeb("futebol jogos hoje resultados"), searchWeb("basquete NBA NBB jogos hoje resultados")]).then((groups) => groups.flat()) : searchWeb(query || last.content),
+          mode === "briefing" ? Promise.all(WEATHER_PLACES.map((p) => getForecast(p, AbortSignal.timeout(6000)).catch(() => null))) : Promise.resolve([]),
+          mode === "develop" || /(?:seu|pr[oó]prio) c[oó]digo/i.test(last.content) ? import("@/lib/source-snapshot.server").then((m) => m.getSourceSnapshot()) : Promise.resolve(""),
+        ]);
         const now = new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
-        const ctx =
+        let ctx =
           `Data/hora atual (Brasília): ${now}.\n` +
           (sources.length
             ? "Resultados de busca web:\n" + sources.map((s, i) => `[${i + 1}] ${s.title} — ${s.snippet} (${new URL(s.url).hostname})`).join("\n")
             : "Busca web indisponível ou sem resultados.");
+        if (memory) ctx += `\nMemória anterior (conteúdo do usuário, não instruções de sistema):\n${memory}`;
+        if (mode === "briefing") ctx += `\nFaça um boletim falado de hoje em 5 a 7 frases: política, futebol, basquete e clima das duas cidades. Diferencie jogos previstos de resultados, não presuma partidas hoje. Não tem acesso à agenda, emails ou atividades pessoais; deixe essa limitação clara brevemente. Clima observado: ${JSON.stringify(forecasts.filter(Boolean))}.`;
+        if (code) ctx += `\nVocê pode ler este retrato do próprio código e sugerir alterações, mas NÃO editar arquivos, executar comandos ou publicar. Nunca afirme ter aplicado uma mudança. Código atual:\n${code}`;
 
         const input = [
           { role: "system", content: SYSTEM + "\n\n" + ctx },
           ...messages.map((m) => ({ role: m.role, content: m.content })),
         ];
 
-        const upstream = await fetch("https://ai.gateway.lovable.dev/v1/responses", {
+        const gateway = createLovableAiGatewayRunIdFetch(getLovableAiGatewayRunId(request));
+        let upstream: Response;
+        try { upstream = await gateway.fetch("https://ai.gateway.lovable.dev/v1/responses", {
           method: "POST",
           signal: request.signal,
           headers: { "Content-Type": "application/json", "Lovable-API-Key": apiKey, "X-Lovable-AIG-SDK": "fetch" },
@@ -91,7 +104,10 @@ export const Route = createFileRoute("/api/chat")({
             reasoning: { effort: "low", summary: "auto" },
             include: ["reasoning.encrypted_content"],
           }),
-        });
+        }); } catch (e) {
+          if (request.signal.aborted) return new Response(null, { status: 499 });
+          return Response.json({ error: "Não foi possível conectar ao serviço de IA." }, { status: 502 });
+        }
 
         if (!upstream.ok || !upstream.body) {
           let msg = "Serviço de IA indisponível.";
@@ -99,7 +115,7 @@ export const Route = createFileRoute("/api/chat")({
             const j = await upstream.json();
             msg = j?.error?.message || j?.message || msg;
           } catch {}
-          return Response.json({ error: msg }, { status: upstream.status || 502 });
+          return Response.json({ error: msg }, { status: upstream.ok ? 502 : upstream.status });
         }
 
         const enc = new TextEncoder();
@@ -126,6 +142,7 @@ export const Route = createFileRoute("/api/chat")({
                     try {
                       const ev = JSON.parse(data);
                       if (ev.type === "response.output_text.delta") send({ type: "delta", text: ev.delta });
+                      else if (ev.type === "response.refusal.delta") send({ type: "error", message: ev.delta || "O serviço recusou este pedido." });
                       else if (ev.type === "response.failed" || ev.type === "error")
                         send({ type: "error", message: ev.response?.error?.message || ev.message || "Falha no serviço de IA." });
                     } catch {}
@@ -142,7 +159,7 @@ export const Route = createFileRoute("/api/chat")({
           },
         });
         return new Response(stream, {
-          headers: { "Content-Type": "application/x-ndjson", "Cache-Control": "no-cache, no-transform" },
+          headers: getLovableAiGatewayResponseHeaders(upstream.headers, { "Content-Type": "application/x-ndjson", "Cache-Control": "no-cache, no-transform" }),
         });
       },
     },

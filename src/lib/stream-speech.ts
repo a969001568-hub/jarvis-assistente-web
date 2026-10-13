@@ -11,7 +11,7 @@ export function decodePCM(pending: Uint8Array, incoming: Uint8Array) {
   return { samples, pending: bytes.slice(usable) };
 }
 
-export async function streamSpeech(endpoint: string, text: string, signal?: AbortSignal): Promise<void> {
+export async function streamSpeech(endpoint: string, text: string, signal?: AbortSignal, onPlaybackStart?: () => void): Promise<void> {
   signal?.throwIfAborted();
   const context = new AudioContext({ sampleRate: 24000 });
   const sources = new Set<AudioBufferSourceNode>();
@@ -19,6 +19,7 @@ export async function streamSpeech(endpoint: string, text: string, signal?: Abor
   let pending = new Uint8Array(0);
   let completed = false;
   let samplesPlayed = 0;
+  let captionTimer: ReturnType<typeof setTimeout> | undefined;
   const controller = new AbortController();
   const abort = () => {
     controller.abort(signal?.reason);
@@ -67,6 +68,7 @@ export async function streamSpeech(endpoint: string, text: string, signal?: Abor
         // Device startup can clip audio scheduled exactly at currentTime.
         playhead = Math.max(playhead, context.currentTime + 0.05);
         source.start(playhead);
+        if (captionTimer === undefined) captionTimer = setTimeout(() => onPlaybackStart?.(), Math.max(0, (playhead - context.currentTime) * 1000) + 160);
         playhead += buffer.duration;
       },
     });
@@ -85,6 +87,7 @@ export async function streamSpeech(endpoint: string, text: string, signal?: Abor
     await playback;
     signal?.throwIfAborted();
   } finally {
+    if (captionTimer !== undefined) clearTimeout(captionTimer);
     signal?.removeEventListener("abort", abort);
     controller.abort();
     for (const source of sources) source.stop();

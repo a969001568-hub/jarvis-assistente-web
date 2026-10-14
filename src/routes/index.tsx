@@ -128,13 +128,15 @@ function Jarvis() {
     if (nextMode !== "focus") { setSystemOpen(true); setLogOpen(true); }
     const history = [...messagesRef.current, { role: "user" as const, content, ts: Date.now() }].slice(-MAX_MEM);
     messagesRef.current = history; setMessages(history); setState("thinking");
-    const ctrl = new AbortController(); abortRef.current = ctrl; speechAbortRef.current = ctrl;
+    const ctrl = new AbortController(); abortRef.current = ctrl;
+    const speechCtrl = new AbortController(); speechAbortRef.current = speechCtrl;
+    ctrl.signal.addEventListener("abort", () => speechCtrl.abort(), { once: true });
     let answer = ""; let sources: Source[] = []; let shown = ""; let pendingSpeech = ""; let chunkCount = 0;
     let voiceTask = Promise.resolve(); let voiceFailure: unknown;
     const queueSpeech = (chunk: string) => {
       if (!chunk.trim()) return;
       chunkCount++;
-      voiceTask = voiceTask.then(async () => { if (ctrl.signal.aborted || !voiceRef.current) return; await speak(chunk, ctrl.signal, () => { shown += chunk; setCaption(shown.trim()); }); }).catch((e) => { voiceFailure = e; });
+      voiceTask = voiceTask.then(async () => { if (ctrl.signal.aborted || !voiceRef.current) return; await speak(chunk, speechCtrl.signal, () => { shown += chunk; setCaption(shown.trim()); }); }).catch((e) => { voiceFailure = e; });
     };
     try {
       const recent = history.slice(-60);

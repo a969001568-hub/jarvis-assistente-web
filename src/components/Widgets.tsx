@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { ArrowUpRight, CloudSun, LocateFixed, RefreshCw, Sun, Radio } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { getForecast, WEATHER_PLACES, type Forecast } from "@/lib/jarvis-context";
+import { getForecast, SANTANA, WEATHER_PLACES, type Forecast } from "@/lib/jarvis-context";
 
 export function ClockWidget() {
   const [now, setNow] = useState<Date | null>(null);
@@ -23,7 +23,7 @@ export function WeatherWidget() {
   useEffect(() => { const timer = setInterval(() => setActive((a) => 1 - a), 9000); return () => clearInterval(timer); }, []);
   const locate = () => {
     if (!navigator.geolocation) { setLocationError("Localização indisponível."); return; }
-    navigator.geolocation.getCurrentPosition((position) => { setLocationError(""); setPlaces([WEATHER_PLACES[0], { name: "Sua localização", latitude: position.coords.latitude, longitude: position.coords.longitude }]); setActive(1); }, () => setLocationError("Localização não autorizada; exibindo São Paulo."), { timeout: 12000, maximumAge: 300000 });
+    navigator.geolocation.getCurrentPosition((position) => { setLocationError(""); setPlaces([SANTANA, { name: "Sua localização", latitude: position.coords.latitude, longitude: position.coords.longitude }]); setActive(1); }, () => setLocationError("Localização não autorizada; exibindo São Paulo."), { timeout: 12000, maximumAge: 300000 });
   };
   const w = forecasts[active];
   return <div className="widget widget-weather col-span-2"><div className="flex items-center justify-between"><div className="widget-label">Clima agora</div><Button variant="ghost" size="icon" aria-label="Usar minha localização" title="Usar minha localização" onClick={locate}><LocateFixed /></Button></div><div key={active} className="weather-change"><div className="text-sm">{places[active].name}</div><div className="my-2 flex items-center justify-between"><span className="font-display text-5xl">{w ? `${w.temperature}°` : loading ? "…" : "—"}</span>{w?.description.includes("limpo") ? <Sun className="size-10 text-accent" /> : <CloudSun className="size-10 text-accent" />}</div><div className="text-sm">{w?.description ?? (loading ? "Consultando clima" : "Clima indisponível")}</div>{w && <div className="mt-1 text-xs text-muted-foreground">Máx. {w.max}° · Mín. {w.min}° · {w.observedAt.split("T")[1]}</div>}</div><div className="mt-3 flex gap-2">{places.map((p, i) => <Button key={p.name} variant="ghost" className={`h-5 w-5 p-0 ${i === active ? "text-primary" : "text-muted-foreground"}`} onClick={() => setActive(i)} aria-label={`Exibir clima de ${p.name}`} aria-pressed={i === active}><span className={`h-1 w-4 rounded-full ${i === active ? "bg-primary" : "bg-muted-foreground/40"}`} /></Button>)}</div>{locationError && <p role="status" className="mt-2 text-xs text-warn">{locationError}</p>}</div>;

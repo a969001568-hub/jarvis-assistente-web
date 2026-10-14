@@ -155,7 +155,8 @@ function Jarvis() {
             if (!voiceRef.current) setCaption(answer);
             else if (chunkCount === 0 && pendingSpeech.length >= 80) {
               const boundary = pendingSpeech.match(/^([\s\S]*?[.!?])(?:\s|$)/);
-              if (boundary) { queueSpeech(boundary[1] + " "); pendingSpeech = pendingSpeech.slice(boundary[1].length).trimStart(); }
+              const sentence = boundary?.[1];
+              if (sentence) { queueSpeech(sentence + " "); pendingSpeech = pendingSpeech.slice(sentence.length).trimStart(); }
             }
           }
         }
@@ -165,7 +166,7 @@ function Jarvis() {
       await voiceTask;
       if (voiceFailure) throw voiceFailure;
       ctrl.signal.throwIfAborted(); setCaption(answer);
-      setMessages((m) => [...m, { role: "assistant", content: answer, sources, ts: Date.now() }].slice(-MAX_MEM)); setState("idle");
+      setMessages((m) => [...m, { role: "assistant" as const, content: answer, sources, ts: Date.now() }].slice(-MAX_MEM)); setState("idle");
     } catch (e) {
       ctrl.abort(); await voiceTask;
       if (e instanceof Error && e.name === "AbortError") setState("idle");

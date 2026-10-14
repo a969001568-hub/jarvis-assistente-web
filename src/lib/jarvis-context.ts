@@ -10,13 +10,14 @@ export const WMO: Record<number, string> = {
   80: "Pancadas", 81: "Pancadas", 82: "Temporal", 95: "Trovoadas", 96: "Trovoadas", 99: "Trovoadas",
 };
 export type Forecast = { name: string; temperature: number; description: string; max: number; min: number; observedAt: string };
+export const SANTANA = { name: "Santana de Parnaíba", latitude: -23.44, longitude: -46.92 };
 export const WEATHER_PLACES = [
-  { name: "Santana de Parnaíba", latitude: -23.44, longitude: -46.92 },
+  SANTANA,
   { name: "São Paulo", latitude: -23.55, longitude: -46.63 },
 ];
 export async function getForecast(place: typeof WEATHER_PLACES[number], signal?: AbortSignal): Promise<Forecast> {
   const query = new URLSearchParams({ latitude: String(place.latitude), longitude: String(place.longitude), current: "temperature_2m,weather_code", daily: "temperature_2m_max,temperature_2m_min", timezone: "America/Sao_Paulo", forecast_days: "1" });
-  const res = await fetch(`https://api.open-meteo.com/v1/forecast?${query}`, { signal });
+  const res = await fetch(`https://api.open-meteo.com/v1/forecast?${query}`, { signal: signal ?? null });
   if (!res.ok) throw new Error("Clima indisponível");
   const j = await res.json();
   if (typeof j.current?.temperature_2m !== "number" || !j.daily?.temperature_2m_max?.length) throw new Error("Clima indisponível");

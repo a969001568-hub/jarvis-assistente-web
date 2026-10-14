@@ -128,13 +128,15 @@ function Jarvis() {
     if (nextMode !== "focus") { setSystemOpen(true); setLogOpen(true); }
     const history = [...messagesRef.current, { role: "user" as const, content, ts: Date.now() }].slice(-MAX_MEM);
     messagesRef.current = history; setMessages(history); setState("thinking");
-    const ctrl = new AbortController(); abortRef.current = ctrl; speechAbortRef.current = ctrl;
+    const ctrl = new AbortController(); abortRef.current = ctrl;
+    const speechCtrl = new AbortController(); speechAbortRef.current = speechCtrl;
+    ctrl.signal.addEventListener("abort", () => speechCtrl.abort(), { once: true });
     let answer = ""; let sources: Source[] = []; let shown = ""; let pendingSpeech = ""; let chunkCount = 0;
     let voiceTask = Promise.resolve(); let voiceFailure: unknown;
     const queueSpeech = (chunk: string) => {
       if (!chunk.trim()) return;
       chunkCount++;
-      voiceTask = voiceTask.then(async () => { if (ctrl.signal.aborted || !voiceRef.current) return; await speak(chunk, ctrl.signal, () => { shown += chunk; setCaption(shown.trim()); }); }).catch((e) => { voiceFailure = e; });
+      voiceTask = voiceTask.then(async () => { if (ctrl.signal.aborted || !voiceRef.current) return; await speak(chunk, speechCtrl.signal, () => { shown += chunk; setCaption(shown.trim()); }); }).catch((e) => { voiceFailure = e; });
     };
     try {
       const recent = history.slice(-60);
@@ -155,7 +157,8 @@ function Jarvis() {
             if (!voiceRef.current) setCaption(answer);
             else if (chunkCount === 0 && pendingSpeech.length >= 80) {
               const boundary = pendingSpeech.match(/^([\s\S]*?[.!?])(?:\s|$)/);
-              if (boundary) { queueSpeech(boundary[1] + " "); pendingSpeech = pendingSpeech.slice(boundary[1].length).trimStart(); }
+              const sentence = boundary?.[1];
+              if (sentence) { queueSpeech(sentence + " "); pendingSpeech = pendingSpeech.slice(sentence.length).trimStart(); }
             }
           }
         }
@@ -165,7 +168,7 @@ function Jarvis() {
       await voiceTask;
       if (voiceFailure) throw voiceFailure;
       ctrl.signal.throwIfAborted(); setCaption(answer);
-      setMessages((m) => [...m, { role: "assistant", content: answer, sources, ts: Date.now() }].slice(-MAX_MEM)); setState("idle");
+      setMessages((m) => [...m, { role: "assistant" as const, content: answer, sources, ts: Date.now() }].slice(-MAX_MEM)); setState("idle");
     } catch (e) {
       ctrl.abort(); await voiceTask;
       if (e instanceof Error && e.name === "AbortError") setState("idle");

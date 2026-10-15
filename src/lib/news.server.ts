@@ -1,0 +1,10 @@
+export type NewsItem={title:string;url:string;source:string;publishedAt:string|null;category:string;snippet:string};
+export const NEWS_FEEDS:Record<string,{url:string;source:string}[]>={
+ Geral:[{url:'https://g1.globo.com/rss/g1/',source:'G1'},{url:'https://agenciabrasil.ebc.com.br/rss/ultimasnoticias/feed.xml',source:'Agência Brasil'}],
+ Política:[{url:'https://g1.globo.com/rss/g1/politica',source:'G1'},{url:'https://agenciabrasil.ebc.com.br/rss/politica/feed.xml',source:'Agência Brasil'}],
+ Futebol:[{url:'https://ge.globo.com/rss/ge/futebol',source:'ge'}],
+ Basquete:[{url:'https://ge.globo.com/rss/ge/basquete',source:'ge'}],
+};
+const decode=(s:string)=>s.replace(/<!\[CDATA\[|\]\]>/g,'').replace(/<[^>]*>/g,' ').replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/\s+/g,' ').trim();
+export function parseNews(xml:string,source:string,category:string):NewsItem[]{return (xml.match(/<item\b[^>]*>[\s\S]*?<\/item>/g)??[]).flatMap((item)=>{const get=(tag:string)=>decode(item.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`))?.[1]??'');const title=get('title');const url=get('link');const date=new Date(get('pubDate'));if(!title||!/^https?:\/\//.test(url))return [];return [{title,url,source,publishedAt:Number.isNaN(date.getTime())?null:date.toISOString(),category,snippet:get('description').slice(0,400)}];});}
+export async function readNews(category:string){const feeds=NEWS_FEEDS[category];if(!feeds)throw new Error('Categoria inválida.');const results=await Promise.all(feeds.map(async(feed)=>{try{const r=await fetch(feed.url,{headers:{'User-Agent':'Mozilla/5.0','Accept':'application/rss+xml, application/xml, text/xml'},signal:AbortSignal.timeout(10000)});if(!r.ok)return [];return parseNews(await r.text(),feed.source,category);}catch{return [];}}));const seen=new Set<string>();return results.flat().filter((n)=>{if(seen.has(n.title))return false;seen.add(n.title);return true;}).sort((a,b)=>(b.publishedAt??'').localeCompare(a.publishedAt??'')).slice(0,12);}

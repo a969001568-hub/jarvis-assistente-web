@@ -1,4 +1,9 @@
 # JARVIS reconstruction
+- [ ] Add Google account login and authorized personal connections; user supplied email alone is not authentication.
+- [ ] Fix unreliable headlines with independent publisher feeds and explicit stale/error states.
+- [ ] Hide sidebars for development animation; keep safe self-code review.
+- [ ] Add optional proactive hands-free conversation with pause after credit failures.
+- [ ] Extend real public web read/search actions without claiming unlimited third-party service access.
 - [x] Rebuild voice-first interface with animated development and daily briefing modes.
 - [x] Alternate local and Santana de Parnaíba weather; improve categorized headlines.
 - [x] Increase browser memory and pass relevant remembered context safely.

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { commandMode, type ViewMode } from "@/lib/jarvis-context";
 import { Download, Trash2, Mic, MicOff, Volume2, VolumeX, PanelLeft, PanelRight, X, Globe, ShieldCheck, Code2, FileText, Mail, HardDrive } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { PersonalConnections } from "@/components/PersonalConnections";
 
 export const Route = createFileRoute("/")({
   head: () => ({ meta: [
@@ -125,7 +126,8 @@ function Jarvis() {
     if (busyRef.current || !WAKE.test(content)) return;
     busyRef.current = true; setError(""); setCaption("");
     const nextMode = commandMode(content); setMode(nextMode);
-    if (nextMode !== "focus") { setSystemOpen(true); setLogOpen(true); }
+    if (nextMode === "develop") { setSystemOpen(false); setLogOpen(false); }
+    else if (nextMode === "briefing") { setSystemOpen(true); setLogOpen(true); }
     const history = [...messagesRef.current, { role: "user" as const, content, ts: Date.now() }].slice(-MAX_MEM);
     messagesRef.current = history; setMessages(history); setState("thinking");
     const ctrl = new AbortController(); abortRef.current = ctrl;

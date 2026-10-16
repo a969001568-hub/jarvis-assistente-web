@@ -2,8 +2,11 @@ import { createFileRoute } from "@tanstack/react-router";
 import { ClockWidget, NewsWidget, StatusWidget, WeatherWidget } from "@/components/Widgets";
 import { Button } from "@/components/ui/button";
 import { commandMode, type ViewMode } from "@/lib/jarvis-context";
-import { Download, Trash2, Mic, MicOff, Volume2, VolumeX, PanelLeft, PanelRight, X, Globe, ShieldCheck, Code2, FileText, Mail, HardDrive } from "lucide-react";
+import { Download, Trash2, Mic, MicOff, Volume2, VolumeX, PanelLeft, PanelRight, X, Globe, ShieldCheck, Code2, FileText, Mail, HardDrive, Radio } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { readPersonalData } from "@/lib/personal.functions";
+import { useJarvisAuth } from "@/lib/auth-context";
 import { PersonalConnections } from "@/components/PersonalConnections";
 
 export const Route = createFileRoute("/")({
@@ -28,6 +31,11 @@ function pickVoice() {
   return voices.find((v) => v.lang === "pt-BR" && /antonio|daniel|ricardo|felipe|male|masculin/i.test(v.name)) ?? voices.find((v) => v.lang === "pt-BR") ?? null;
 }
 function Jarvis() {
+  const { user } = useJarvisAuth();
+  const readPersonal = useServerFn(readPersonalData);
+  const [proactive, setProactive] = useState(true);
+  const lastInteractionRef = useRef(0);
+  const aiPausedRef = useRef(false);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [state, setState] = useState<State>("idle");
@@ -124,7 +132,7 @@ function Jarvis() {
   }, [speakChrome]);
   const send = useCallback(async (content: string) => {
     if (busyRef.current || !WAKE.test(content)) return;
-    busyRef.current = true; setError(""); setCaption("");
+    busyRef.current = true; lastInteractionRef.current = Date.now(); setError(""); setCaption("");
     const nextMode = commandMode(content); setMode(nextMode);
     if (nextMode === "develop") { setSystemOpen(false); setLogOpen(false); }
     else if (nextMode === "briefing") { setSystemOpen(true); setLogOpen(true); }
@@ -141,11 +149,19 @@ function Jarvis() {
       voiceTask = voiceTask.then(async () => { if (ctrl.signal.aborted || !voiceRef.current) return; await speak(chunk, speechCtrl.signal, () => { shown += chunk; setCaption(shown.trim()); }); }).catch((e) => { voiceFailure = e; });
     };
     try {
+      let personalContext = "";
+      const personalId = /gmail|e-?mails?|caixa de entrada/i.test(content) ? "google_mail" as const : /drive|meus arquivos/i.test(content) ? "google_drive" as const : /docs.google.com|google docs|meu documento/i.test(content) ? "google_docs" as const : null;
+      if (personalId) {
+        if (!user) throw new Error("Entre com Google e conecte sua conta antes de ler dados pessoais.");
+        const documentId = content.match(/docs\.google\.com\/document\/d\/([\w-]+)/)?.[1];
+        const result = await readPersonal({data:{connectorId:personalId,...(documentId ? {documentId} : {})}});
+        personalContext = JSON.stringify(result.rows).slice(0,14000);
+      }
       const recent = history.slice(-60);
       const words = content.toLowerCase().split(/\W+/).filter((w) => w.length > 3);
       const older = history.slice(0, -60).filter((m) => m.role === "user" && words.some((w) => m.content.toLowerCase().includes(w))).slice(-24);
-      const res = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messages: recent.map(({ role, content }) => ({ role, content: content.slice(0, 4000) })), memory: older.map((m) => m.content).join("\n").slice(0, 14000) }), signal: ctrl.signal });
-      if (!res.ok || !res.body) { const j = await res.json().catch(() => ({})); throw new Error(j.error ?? "O serviço de IA está indisponível."); }
+      const res = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messages: recent.map(({ role, content }) => ({ role, content: content.slice(0, 4000) })), memory: older.map((m) => m.content).join("\n").slice(0, 14000), personalContext }), signal: ctrl.signal });
+      if (!res.ok || !res.body) { const j = await res.json().catch(() => ({})); if (res.status === 402 || res.status === 403) aiPausedRef.current = true; throw new Error(j.error ?? "O serviço de IA está indisponível."); } else { aiPausedRef.current = false; }
       const reader = res.body.getReader(); const dec = new TextDecoder(); let buf = "";
       for (;;) {
         const { done, value } = await reader.read(); if (done) break; buf += dec.decode(value, { stream: true }); let i;
@@ -176,8 +192,22 @@ function Jarvis() {
       if (e instanceof Error && e.name === "AbortError") setState("idle");
       else { setError(e instanceof Error ? e.message : "A conexão com o servidor falhou."); setState("error"); }
     } finally { busyRef.current = false; abortRef.current = null; speechAbortRef.current = null; scheduleListen(); }
-  }, [speak, scheduleListen]);
+  }, [speak, scheduleListen, readPersonal, user]);
   sendRef.current = send;
+  useEffect(() => {
+    if (!handsFree || !proactive) return;
+    lastInteractionRef.current = Date.now();
+    let ctrl: AbortController | null = null;
+    const timer = setInterval(() => {
+      if (!handsFreeRef.current || !voiceRef.current || busyRef.current || aiPausedRef.current || document.visibilityState !== "visible" || Date.now() - lastInteractionRef.current < 300000) return;
+      lastInteractionRef.current = Date.now(); busyRef.current = true;
+      const rec = recRef.current; recRef.current = null; listeningRef.current = false; rec?.abort();
+      ctrl = new AbortController(); speechAbortRef.current = ctrl;
+      const question = "Senhor, gostaria de conferir as notícias ou organizar o restante do dia?";
+      void speakChrome(question, () => { setState("speaking"); setCaption(question); }, ctrl.signal).finally(() => { busyRef.current = false; speechAbortRef.current = null; if (mountedRef.current) { setState("idle"); scheduleListen(); } });
+    }, 15000);
+    return () => { clearInterval(timer); ctrl?.abort(); };
+  }, [handsFree, proactive, speakChrome, scheduleListen]);
   const stopAll = () => {
     handsFreeRef.current = false; setHandsFree(false); clearTimeout(restartRef.current);
     const rec = recRef.current; recRef.current = null; listeningRef.current = false; rec?.abort();
@@ -187,10 +217,10 @@ function Jarvis() {
   const exportMem = () => { const url = URL.createObjectURL(new Blob([JSON.stringify(messages, null, 2)], { type: "application/json" })); const a = document.createElement("a"); a.href = url; a.download = `jarvis_memoria_${new Date().toISOString().slice(0, 10)}.json`; a.click(); URL.revokeObjectURL(url); };
   const lastSources = [...messages].reverse().find((m) => m.role === "assistant")?.sources ?? [];
   return <div className="jarvis-shell" data-mode={mode}>
-    <header className="app-header"><div className="flex items-center gap-3"><span className="brand-mark" aria-hidden="true">J</span><div><h1 className="font-display text-xl">J.A.R.V.I.S.</h1><div className="text-xs text-muted-foreground">PERSONAL INTELLIGENCE</div></div></div><div className="header-status"><span className={`status-dot ${state === "error" ? "status-error" : ""}`} />{STATE_LABEL[state]}</div><div className="flex gap-1"><Button variant="ghost" size="icon" aria-label="Alternar painel Sistema" title="Sistema" onClick={() => setSystemOpen(!systemOpen)} aria-pressed={systemOpen}><PanelLeft /></Button><Button variant="ghost" size="icon" aria-label="Alternar painel Registro" title="Registro" onClick={() => setLogOpen(!logOpen)} aria-pressed={logOpen}><PanelRight /></Button><Button variant="ghost" size="icon" aria-label="Conexões pessoais" title="Conexões pessoais" onClick={() => setConnectionsOpen(true)}><ShieldCheck /></Button></div></header>
+    <header className="app-header"><div className="flex items-center gap-3"><span className="brand-mark" aria-hidden="true">J</span><div><h1 className="font-display text-xl">J.A.R.V.I.S.</h1><div className="text-xs text-muted-foreground">{user?.email ?? "PERSONAL INTELLIGENCE"}</div></div></div><div className="header-status"><span className={`status-dot ${state === "error" ? "status-error" : ""}`} />{STATE_LABEL[state]}</div><div className="flex gap-1"><Button variant="ghost" size="icon" aria-label="Alternar painel Sistema" title="Sistema" onClick={() => setSystemOpen(!systemOpen)} aria-pressed={systemOpen}><PanelLeft /></Button><Button variant="ghost" size="icon" aria-label="Alternar painel Registro" title="Registro" onClick={() => setLogOpen(!logOpen)} aria-pressed={logOpen}><PanelRight /></Button><Button variant="ghost" size="icon" aria-label="Conexões pessoais" title="Conexões pessoais" onClick={() => setConnectionsOpen(true)}><ShieldCheck /></Button></div></header>
     <div className={`workspace ${systemOpen ? "with-system" : ""} ${logOpen ? "with-log" : ""}`}>
       {systemOpen && <aside className="system-panel panel-reveal" aria-label="Sistema"><div className="panel-heading"><span className="hud-label">Sistema</span><span className="text-xs text-muted-foreground">01 / LIVE</span></div><div className="grid grid-cols-2 gap-3"><ClockWidget /><StatusWidget state={STATE_LABEL[state]} mem={messages.length} max={MAX_MEM} /><WeatherWidget /><NewsWidget /></div><div className="mt-5 flex justify-between border-t border-border pt-3"><Button variant="ghost" size="sm" onClick={exportMem} disabled={!messages.length}><Download />Exportar</Button><Button variant="ghost" size="icon" aria-label="Limpar memória" title="Limpar memória" disabled={!messages.length || busyRef.current} onClick={() => { if (window.confirm("Apagar todas as conversas deste navegador?")) { messagesRef.current = []; setMessages([]); setCaption(""); } }}><Trash2 /></Button></div></aside>}
-      <main className="core-stage"><div className="stage-top"><span className="hud-label">{mode === "develop" ? "Ambiente de desenvolvimento" : mode === "briefing" ? "Relatório do dia" : "Interface neural"}</span><span className="text-xs text-muted-foreground">J / 01</span></div><div className="core-experience"><div className="core-orbit"><span className="orbit-cross cross-top" /><span className="orbit-cross cross-bottom" /><span className="orbit-caption">VOICE LINK</span><Button variant="ghost" className="reactor" disabled={!supported} onClick={() => state === "listening" || state === "speaking" || state === "thinking" ? stopAll() : startListening()} data-state={state} aria-label={state === "listening" || state === "speaking" || state === "thinking" ? "Parar" : "Falar com o JARVIS"}><span className="ring r1" /><span className="ring r2" /><span className="ring r3" /><span className="ring r4" /><span className="core"><span className="core-symbol">J</span></span></Button><span className="orbit-caption caption-bottom">{handsFree ? "ESCUTA ATIVA" : "STANDBY"}</span></div><div className="spectrum" data-active={state === "speaking" || state === "listening"} aria-hidden="true">{Array.from({ length: 31 }, (_, i) => <span key={i} />)}</div><div className="hud-label state-label">{STATE_LABEL[state]}</div><div className="captions" aria-live="polite">{interim || caption ? <p>{interim || caption}</p> : <div><p className="text-2xl text-foreground">À sua disposição.</p><p className="mt-2 text-sm text-muted-foreground">{supported ? "Jarvis, como estamos pra hoje?" : "Reconhecimento de voz indisponível neste navegador."}</p></div>}</div>{error && <p className="error-message" role="alert">{error}</p>}<div className="voice-controls"><Button variant={handsFree ? "secondary" : "outline"} onClick={toggleHandsFree} disabled={!supported} aria-pressed={handsFree}>{handsFree ? <Mic /> : <MicOff />}{handsFree ? "Mãos livres ativo" : "Ativar mãos livres"}</Button><Button variant="ghost" size="icon" aria-label={voiceOn ? "Desativar voz" : "Ativar voz"} title={voiceOn ? "Desativar voz" : "Ativar voz"} aria-pressed={voiceOn} onClick={() => { voiceRef.current = !voiceOn; setVoiceOn(!voiceOn); if (voiceOn) { speechAbortRef.current?.abort(); window.speechSynthesis?.cancel(); chromeResolveRef.current?.(); } }}>{voiceOn ? <Volume2 /> : <VolumeX />}</Button></div></div><div className="stage-footer"><span><Globe className="size-3" />Web sob consulta</span><span><ShieldCheck className="size-3" />Memória neste navegador</span></div></main>
+      <main className="core-stage"><div className="stage-top"><span className="hud-label">{mode === "develop" ? "Ambiente de desenvolvimento" : mode === "briefing" ? "Relatório do dia" : "Interface neural"}</span><span className="text-xs text-muted-foreground">J / 01</span></div><div className="core-experience"><div className="core-orbit"><span className="orbit-cross cross-top" /><span className="orbit-cross cross-bottom" /><span className="orbit-caption">VOICE LINK</span><Button variant="ghost" className="reactor" disabled={!supported} onClick={() => state === "listening" || state === "speaking" || state === "thinking" ? stopAll() : startListening()} data-state={state} aria-label={state === "listening" || state === "speaking" || state === "thinking" ? "Parar" : "Falar com o JARVIS"}><span className="ring r1" /><span className="ring r2" /><span className="ring r3" /><span className="ring r4" /><span className="core"><span className="core-symbol">J</span></span></Button><span className="orbit-caption caption-bottom">{handsFree ? "ESCUTA ATIVA" : "STANDBY"}</span></div><div className="spectrum" data-active={state === "speaking" || state === "listening"} aria-hidden="true">{Array.from({ length: 31 }, (_, i) => <span key={i} />)}</div><div className="hud-label state-label">{STATE_LABEL[state]}</div><div className="captions" aria-live="polite">{interim || caption ? <p>{interim || caption}</p> : <div><p className="text-2xl text-foreground">À sua disposição.</p><p className="mt-2 text-sm text-muted-foreground">{supported ? "Jarvis, como estamos pra hoje?" : "Reconhecimento de voz indisponível neste navegador."}</p></div>}</div>{error && <p className="error-message" role="alert">{error}</p>}<div className="voice-controls"><Button variant="ghost" size="icon" aria-label="Conversas espontâneas" title="Conversas espontâneas após cinco minutos" aria-pressed={proactive} onClick={() => setProactive(!proactive)}><Radio className={proactive ? "text-primary" : "text-muted-foreground"} /></Button><Button variant={handsFree ? "secondary" : "outline"} onClick={toggleHandsFree} disabled={!supported} aria-pressed={handsFree}>{handsFree ? <Mic /> : <MicOff />}{handsFree ? "Mãos livres ativo" : "Ativar mãos livres"}</Button><Button variant="ghost" size="icon" aria-label={voiceOn ? "Desativar voz" : "Ativar voz"} title={voiceOn ? "Desativar voz" : "Ativar voz"} aria-pressed={voiceOn} onClick={() => { voiceRef.current = !voiceOn; setVoiceOn(!voiceOn); if (voiceOn) { speechAbortRef.current?.abort(); window.speechSynthesis?.cancel(); chromeResolveRef.current?.(); } }}>{voiceOn ? <Volume2 /> : <VolumeX />}</Button></div></div><div className="stage-footer"><span><Globe className="size-3" />Web sob consulta</span><span><ShieldCheck className="size-3" />Memória neste navegador</span></div></main>
       {logOpen && <aside className="log-panel panel-reveal" aria-label="Registro"><div className="panel-heading"><span className="hud-label">Registro</span><span className="text-xs text-muted-foreground">{messages.length} ENTRADAS</span></div><div ref={logRef} className="transcript"><div className="session-marker">CONVERSA LOCAL</div>{!messages.length && <p className="mt-5 text-sm text-muted-foreground">Nenhuma conversa ainda.</p>}{messages.map((m, i) => <div key={`${m.ts}-${i}`} className={`log-message ${m.role}`}><div className="flex justify-between text-xs text-muted-foreground"><span>{m.role === "user" ? "VOCÊ" : "J.A.R.V.I.S."}</span><span>{m.ts ? new Date(m.ts).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : ""}</span></div><p className="mt-2 whitespace-pre-wrap break-words text-base leading-relaxed">{m.content}</p></div>)}</div>{lastSources.length > 0 && <div className="sources"><div className="hud-label mb-3">Fontes consultadas</div>{lastSources.slice(0, 3).map((s) => <a key={s.url + s.title} href={s.url} target="_blank" rel="noreferrer" className="mb-2 block line-clamp-2 text-xs text-muted-foreground hover:text-primary">{s.title}</a>)}</div>}</aside>}
     </div>
     {connectionsOpen && <div className="dialog-backdrop" onClick={() => setConnectionsOpen(false)}><section role="dialog" aria-modal="true" aria-labelledby="connections-title" className="connections-dialog" onClick={(e) => e.stopPropagation()}><div className="flex justify-between"><h2 id="connections-title" className="font-display text-lg">Conexões pessoais</h2><Button variant="ghost" size="icon" aria-label="Fechar conexões" onClick={() => setConnectionsOpen(false)}><X /></Button></div><div className="mt-5"><PersonalConnections /></div><div className="mt-5 flex items-start gap-3 border-t border-border pt-4"><Code2 className="size-5 shrink-0 text-primary" /><p className="text-sm text-muted-foreground">O JARVIS pode analisar seu próprio código ao receber um pedido terminado em “desenvolva”. Alterações não são aplicadas automaticamente.</p></div></section></div>}

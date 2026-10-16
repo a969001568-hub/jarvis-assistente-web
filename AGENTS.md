@@ -17,4 +17,6 @@
 - Voice command modes and forecast parsing share browser-safe helpers, so briefing and widgets use consistent locations and conditions.
 - Voice callbacks dispatch through refs and restart timers are canceled on Stop, so continuous listening cannot revive stale requests.
 - Source review uses an explicit bundled read-only snapshot of credential-free application files; the assistant cannot write, execute, or deploy its own code.
-- Personal provider access stays unavailable until a real authenticated app identity and authorized per-user OAuth client exist; never use shared credentials or simulated account data.
+- Google login uses managed Cloud Auth with one root session subscriber; personal connections use authenticated server functions and encrypted per-user connector keys, never shared credentials.
+- Headlines read independent publisher feeds; public article reads use a fixed HTTPS publisher allowlist with redirects disabled and bounded response bodies to prevent private-network fetches.
+- Proactive hands-free prompts use browser speech only, never billed AI calls; durable AI failure state prevents provider-denial retries and automated credit exhaustion.

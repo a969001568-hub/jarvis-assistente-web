@@ -1,9 +1,9 @@
 # JARVIS reconstruction
-- [ ] Add Google account login and authorized personal connections; user supplied email alone is not authentication.
-- [ ] Fix unreliable headlines with independent publisher feeds and explicit stale/error states.
-- [ ] Hide sidebars for development animation; keep safe self-code review.
-- [ ] Add optional proactive hands-free conversation with pause after credit failures.
-- [ ] Extend real public web read/search actions without claiming unlimited third-party service access.
+- [x] Add Google login and encrypted per-user authorization flow. Verified real authenticated state, status read, sign-out and authorization redirect to Google.
+- [x] Fix unreliable headlines with independent publisher feeds; verified all four categories display real rows.
+- [x] Hide sidebars for development animation; keep safe self-code review.
+- [x] Add optional proactive hands-free prompts using browser speech after five idle minutes; no paid background AI calls.
+- [x] Extend public web reads to an explicit publisher allowlist and connected-account voice reads; no unlimited service claims.
 - [x] Rebuild voice-first interface with animated development and daily briefing modes.
 - [x] Alternate local and Santana de Parnaíba weather; improve categorized headlines.
 - [x] Increase browser memory and pass relevant remembered context safely.
@@ -11,4 +11,4 @@
 - [x] Give AI read-only access to selected source files for review; no autonomous deployment.
 - [x] Verify simulated voice-command recognition, panel opening, browser memory restoration, live headlines/weather, narrow layouts and audio-before-caption ordering; seven automated tests passed.
 - [ ] Verify actual AI briefing, source review and synthesized voice end-to-end: blocked by gateway response "Not enough credits"; no further live AI calls made.
-- [ ] Personal account access: blocked by missing authenticated app identity and configured OAuth clients; social private access also requires supported provider permissions.
+- [ ] Verify Gmail/Drive/Docs private data reads end-to-end: waits for user to finish Google consent in each Conectar popup; no private connector keys saved yet. WhatsApp/Instagram login unsupported in Cloud.

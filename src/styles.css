@@ -40,13 +40,31 @@
 .jarvis-shell:is([data-mode=develop],[data-mode=briefing]) .r3 { animation: spin 4s linear infinite; border-style: dashed; }
 .jarvis-shell:is([data-mode=develop],[data-mode=briefing]) .r4 { animation: spin 7s linear infinite reverse; }
 .jarvis-shell:is([data-mode=develop],[data-mode=briefing]) .core-stage::after { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(0deg,transparent 0 70px,var(--grid-line) 71px 72px); pointer-events: none; animation: neural-scan 5s linear infinite; }
-.briefing-topics { position: absolute; z-index: 1; top: 160px; left: 50%; transform: translateX(-50%); display: flex; justify-content: center; gap: 36px; width: min(90%, 500px); pointer-events: none; }
-.briefing-topics > span { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--foreground); animation: panel-enter 1s ease both; }
-.briefing-topics > span:nth-child(2) { animation-delay: .15s; }.briefing-topics > span:nth-child(3) { animation-delay: .3s; }
-.jarvis-shell[data-mode=briefing] .core-experience { padding-top: 85px; }
 .connections-dialog { max-height: 90dvh; overflow-y: auto; }
 .app-header > div:first-child { min-width: 0; }.app-header > div:first-child > div { min-width: 0; }.app-header .text-xs { overflow-wrap: anywhere; }
 @keyframes neural-expand { from { opacity: .4; transform: scale(.85); } to { opacity: 1; transform: scale(1); } }
 @keyframes neural-scan { from { transform: translateY(-70px); } to { transform: translateY(70px); } }
-@media (max-width:700px) { .jarvis-shell:is([data-mode=develop],[data-mode=briefing]) .core-orbit { width: 320px; }.jarvis-shell:is([data-mode=develop],[data-mode=briefing]) .reactor { width: 280px; height: 280px; }.briefing-topics { top: 147px; gap: 16px; }.briefing-topics > span { font-size: 12px; } }
-@media (prefers-reduced-motion:reduce) { .jarvis-shell:is([data-mode=develop],[data-mode=briefing]) .core-stage::after { animation: none; }.jarvis-shell:is([data-mode=develop],[data-mode=briefing]) .core-experience, .jarvis-shell:is([data-mode=develop],[data-mode=briefing]) .r3, .jarvis-shell:is([data-mode=develop],[data-mode=briefing]) .r4, .briefing-topics > span { animation: none; } }
+@media (max-width:700px) { .jarvis-shell:is([data-mode=develop],[data-mode=briefing]) .core-orbit { width: 320px; }.jarvis-shell:is([data-mode=develop],[data-mode=briefing]) .reactor { width: 280px; height: 280px; }}
+@media (prefers-reduced-motion:reduce) { .jarvis-shell:is([data-mode=develop],[data-mode=briefing]) .core-stage::after { animation: none; }.jarvis-shell:is([data-mode=develop],[data-mode=briefing]) .core-experience, .jarvis-shell:is([data-mode=develop],[data-mode=briefing]) .r3, .jarvis-shell:is([data-mode=develop],[data-mode=briefing]) .r4 { animation: none; } }
+
+.briefing-boot { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; background: var(--backdrop); pointer-events: none; overflow: hidden; animation: boot-out .6s ease 2.3s forwards; }
+.boot-rings { position: absolute; display: grid; place-items: center; }
+.boot-rings span { position: absolute; border: 1px solid var(--primary); border-radius: 50%; width: 120px; height: 120px; box-shadow: 0 0 24px var(--glow); animation: boot-ring 2.2s cubic-bezier(.2,.7,.2,1) both; }
+.boot-rings span:nth-child(2) { animation-delay: .3s; border-style: dashed; }.boot-rings span:nth-child(3) { animation-delay: .6s; border-color: var(--accent); }
+.boot-lines { position: relative; display: flex; flex-direction: column; gap: 10px; min-width: 260px; }
+.boot-line { font-size: .75rem; opacity: 0; animation: boot-type .35s steps(12) both; white-space: nowrap; overflow: hidden; }
+.boot-line:last-child { color: var(--accent); }
+.boot-sweep { position: absolute; inset: 0; background: linear-gradient(180deg, transparent 0 45%, var(--glow) 50%, transparent 55% 100%); animation: boot-sweep 1.6s ease-in-out .2s both; opacity: .5; }
+.briefing-hud { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 16px; padding: 0 25px 24px; }
+.briefing-card { position: relative; overflow: hidden; background: var(--widget-surface); border: 1px solid var(--border); border-radius: 16px; padding: 16px; clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 0 100%); animation: card-in .7s cubic-bezier(.2,.7,.2,1) both; }
+.briefing-card-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--border); color: var(--foreground); }
+.briefing-card-icon { display: grid; place-items: center; width: 28px; height: 28px; border: 1px solid var(--primary); border-radius: 50%; color: var(--primary); box-shadow: 0 0 12px var(--glow); }
+.briefing-card-scan { position: absolute; left: 0; right: 0; top: 0; height: 2px; background: var(--primary); box-shadow: 0 0 14px var(--glow); animation: card-scan 3.5s linear infinite; }
+@keyframes boot-out { to { opacity: 0; visibility: hidden; } }
+@keyframes boot-ring { from { transform: scale(.2); opacity: 0; } 40% { opacity: 1; } to { transform: scale(6); opacity: 0; } }
+@keyframes boot-type { from { opacity: 1; max-width: 0; } to { opacity: 1; max-width: 320px; } }
+@keyframes boot-sweep { from { transform: translateY(-100%); } to { transform: translateY(100%); } }
+@keyframes card-in { from { opacity: 0; transform: translateY(30px) scale(.96); filter: blur(4px); } to { opacity: 1; transform: none; filter: none; } }
+@keyframes card-scan { from { transform: translateY(0); opacity: .8; } to { transform: translateY(320px); opacity: 0; } }
+@media (max-width:900px) { .briefing-hud { grid-template-columns: minmax(0,1fr); padding: 0 12px 20px; } }
+@media (prefers-reduced-motion:reduce) { .briefing-boot { animation: boot-out .01s 1s forwards; } .boot-rings span, .boot-sweep, .briefing-card-scan { animation: none; display: none; } .boot-line, .briefing-card { animation: none; opacity: 1; } }

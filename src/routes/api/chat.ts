@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { BRIEFING_INSTRUCTIONS, commandMode, getForecast, WEATHER_PLACES } from "@/lib/jarvis-context";
-import { createLovableAiGatewayRunIdFetch, getLovableAiGatewayRunId, getLovableAiGatewayResponseHeaders } from "@/lib/gateway-run-id.server";
+import { resolveChatProvider } from "@/lib/ai-provider.server";
 
 type Msg = { role: "user" | "assistant"; content: string };
 type Source = { title: string; url: string; snippet: string };
@@ -54,8 +54,8 @@ export const Route = createFileRoute("/api/chat")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const apiKey = process.env["LOVABLE_API_KEY"];
-        if (!apiKey) return Response.json({ error: "Chave de IA não configurada." }, { status: 401 });
+        const provider = resolveChatProvider();
+        if (!provider) return Response.json({ error: "Chave de IA não configurada. Adicione AI_API_KEY nas variáveis do projeto." }, { status: 401 });
         let messages: Msg[] = [];
         let memory = "";
         let personalContext = "";
@@ -71,11 +71,6 @@ export const Route = createFileRoute("/api/chat")({
         if (!last) return Response.json({ error: "Mensagem vazia." }, { status: 400 });
 
         const mode = commandMode(last.content);
-        const { aiPauseState, pauseAi } = await import("@/lib/ai-state.server");
-        const paused = await aiPauseState("chat");
-        // Explicit user requests may check recovery after a credit pause; no
-        // automated job or proactive conversation calls this paid endpoint.
-        if (paused?.paused && paused.status === 403) return Response.json({error: paused.message}, {status:403});
         const query = last.content.replace(/\b(jarvis|jarvi|jarbas|jarves|djarvis|jarvas)\b/gi, "").replace(/desenvolva[.!?\s]*$/i, "").trim();
         const [sources, forecasts, code] = await Promise.all([
           mode === "briefing" ? Promise.all([searchWeb("política Brasil hoje"), searchWeb("futebol jogos hoje resultados"), searchWeb("basquete NBA NBB jogos hoje resultados")]).then((groups) => groups.flat()) : searchWeb(query || last.content),
@@ -103,38 +98,41 @@ export const Route = createFileRoute("/api/chat")({
         if (mode === "briefing") ctx += `\n${BRIEFING_INSTRUCTIONS} Clima observado: ${JSON.stringify(forecasts.filter(Boolean))}.`;
         if (code) ctx += `\nVocê pode ler este retrato do próprio código e sugerir alterações, mas NÃO editar arquivos, executar comandos ou publicar. Nunca afirme ter aplicado uma mudança. Código atual:\n${code}`;
 
+
+        const history: Msg[] = [];
+        let used = 0;
+        for (const m of [...messages].reverse()) {
+          used += m.content.length;
+          if (history.length && used > provider.maxContext / 2) break;
+          history.unshift(m);
+        }
         const input = [
-          { role: "system", content: SYSTEM + "\n\n" + ctx },
-          ...messages.map((m) => ({ role: m.role, content: m.content })),
+          { role: "system", content: (SYSTEM + "\n\n" + ctx).slice(0, provider.maxContext) },
+          ...history.map((m) => ({ role: m.role, content: m.content })),
         ];
 
-        const gateway = createLovableAiGatewayRunIdFetch(getLovableAiGatewayRunId(request));
         let upstream: Response;
-        try { upstream = await gateway.fetch("https://ai.gateway.lovable.dev/v1/responses", {
-          method: "POST",
-          signal: request.signal,
-          headers: { "Content-Type": "application/json", "Lovable-API-Key": apiKey, "X-Lovable-AIG-SDK": "fetch" },
-          body: JSON.stringify({
-            model: "openai/gpt-6-astra",
-            input,
-            stream: true,
-            store: false,
-            reasoning: { effort: "low", summary: "auto" },
-            include: ["reasoning.encrypted_content"],
-          }),
-        }); } catch (e) {
+        try {
+          upstream = await fetch(provider.url, {
+            method: "POST",
+            signal: request.signal,
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${provider.key}` },
+            body: JSON.stringify({ model: provider.model, messages: input, stream: true, temperature: 0.6 }),
+          });
+        } catch {
           if (request.signal.aborted) return new Response(null, { status: 499 });
-          return Response.json({ error: "Não foi possível conectar ao serviço de IA." }, { status: 502 });
+          return Response.json({ error: `Não foi possível conectar ao ${provider.name}.` }, { status: 502 });
         }
 
         if (!upstream.ok || !upstream.body) {
-          let msg = "Serviço de IA indisponível.";
+          let msg = `${provider.name} indisponível.`;
           try {
             const j = await upstream.json();
-            msg = j?.error?.message || j?.message || msg;
+            msg = (Array.isArray(j) ? j[0] : j)?.error?.message || j?.message || msg;
           } catch {}
-          if (upstream.status === 402 || upstream.status === 403) await pauseAi("chat",upstream.status,msg);
-          return Response.json({ error: msg }, { status: upstream.ok ? 502 : upstream.status });
+          if (upstream.status === 429) msg = `Limite momentâneo do ${provider.name} atingido. Tente de novo em alguns segundos.`;
+          if (upstream.status === 401) msg = `A chave AI_API_KEY foi recusada pelo ${provider.name}. Verifique a chave nas variáveis do projeto.`;
+          return Response.json({ error: msg }, { status: upstream.status === 401 ? 401 : upstream.status === 429 ? 429 : 502 });
         }
 
         const enc = new TextEncoder();
@@ -151,24 +149,21 @@ export const Route = createFileRoute("/api/chat")({
                 if (done) break;
                 buf += dec.decode(value, { stream: true });
                 let idx;
-                while ((idx = buf.indexOf("\n\n")) >= 0) {
-                  const frame = buf.slice(0, idx);
-                  buf = buf.slice(idx + 2);
-                  for (const line of frame.split("\n")) {
-                    if (!line.startsWith("data:")) continue;
-                    const data = line.slice(5).trim();
-                    if (!data || data === "[DONE]") continue;
-                    try {
-                      const ev = JSON.parse(data);
-                      if (ev.type === "response.output_text.delta") send({ type: "delta", text: ev.delta });
-                      else if (ev.type === "response.refusal.delta") send({ type: "error", message: ev.delta || "O serviço recusou este pedido." });
-                      else if (ev.type === "response.failed" || ev.type === "error")
-                        send({ type: "error", message: ev.response?.error?.message || ev.message || "Falha no serviço de IA." });
-                    } catch {}
-                  }
+                while ((idx = buf.indexOf("\n")) >= 0) {
+                  const line = buf.slice(0, idx).trim();
+                  buf = buf.slice(idx + 1);
+                  if (!line.startsWith("data:")) continue;
+                  const data = line.slice(5).trim();
+                  if (!data || data === "[DONE]") continue;
+                  try {
+                    const ev = JSON.parse(data);
+                    const text = ev.choices?.[0]?.delta?.content;
+                    if (typeof text === "string" && text) send({ type: "delta", text });
+                    else if (ev.error) send({ type: "error", message: ev.error.message || "Falha no serviço de IA." });
+                  } catch {}
                 }
               }
-            } catch (e) {
+            } catch {
               if (!request.signal.aborted) send({ type: "error", message: "Conexão interrompida." });
             }
             controller.close();
@@ -178,7 +173,7 @@ export const Route = createFileRoute("/api/chat")({
           },
         });
         return new Response(stream, {
-          headers: getLovableAiGatewayResponseHeaders(upstream.headers, { "Content-Type": "application/x-ndjson", "Cache-Control": "no-cache, no-transform" }),
+          headers: { "Content-Type": "application/x-ndjson", "Cache-Control": "no-cache, no-transform", "X-AI-Provider": provider.name },
         });
       },
     },

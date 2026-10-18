@@ -6,6 +6,7 @@ import {Button} from '@/components/ui/button';
 import {useJarvisAuth} from '@/lib/auth-context';
 import {lovable} from '@/integrations/lovable';
 import {supabase} from '@/integrations/supabase/client';
+import {googleSignInOptions} from '@/lib/google-auth';
 import {connectionStatus,startPersonalConnection,finishPersonalConnection,readPersonalData} from '@/lib/personal.functions';
 import {Mail,HardDrive,FileText,LogIn,LogOut,RefreshCw,ArrowUpRight} from 'lucide-react';
 type ConnectorId='google_mail'|'google_drive'|'google_docs';
@@ -15,7 +16,7 @@ export function PersonalConnections(){
  const {user,ready}=useJarvisAuth(); const [connected,setConnected]=useState<string[]>([]); const [busy,setBusy]=useState(''); const [notice,setNotice]=useState(''); const [rows,setRows]=useState<Row[]>([]); const [documentUrl,setDocumentUrl]=useState('');
  const status=useServerFn(connectionStatus);const start=useServerFn(startPersonalConnection);const finish=useServerFn(finishPersonalConnection);const read=useServerFn(readPersonalData); const navigate=useNavigate();const router=useRouter();const queryClient=useQueryClient();
  useEffect(()=>{let active=true;setRows([]);setConnected([]);if(user)status().then((v)=>{if(active)setConnected(v);}).catch((e)=>{if(active)setNotice(e.message);});return()=>{active=false;};},[user,status]);
- const signIn=async()=>{setBusy('login');setNotice('');try{const result=await lovable.auth.signInWithOAuth('google',{redirect_uri:window.location.origin,extraParams:{login_hint:'lucas.bessa.clezar@gmail.com',prompt:'select_account'}});if(result.error)throw result.error;if(!result.redirected){await router.invalidate();}}catch(e){setNotice(e instanceof Error?e.message:'Não foi possível entrar com Google.');}finally{setBusy('');}};
+ const signIn=async()=>{setBusy('login');setNotice('');try{const result=await lovable.auth.signInWithOAuth('google',googleSignInOptions(window.location.origin));if(result.error)throw result.error;if(!result.redirected){await router.invalidate();}}catch(e){setNotice(e instanceof Error?e.message:'Não foi possível entrar com Google.');}finally{setBusy('');}};
  const signOut=async()=>{await queryClient.cancelQueries();queryClient.clear();const {error}=await supabase.auth.signOut();if(error){setNotice(error.message);return;}await navigate({to:'/auth',replace:true});};
  const connect=async(id:ConnectorId)=>{
   const popup=window.open('about:blank','jarvis-google','width=620,height=750');if(!popup){setNotice('Permita a abertura da janela Google no Chrome.');return;}setBusy(id);setNotice('');

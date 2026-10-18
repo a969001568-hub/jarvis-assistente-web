@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ClockWidget, NewsWidget, StatusWidget, WeatherWidget } from "@/components/Widgets";
 import { Button } from "@/components/ui/button";
-import { commandMode, type ViewMode } from "@/lib/jarvis-context";
+import { BRIEFING_TOPICS, commandMode, presentationPanels, type ViewMode } from "@/lib/jarvis-context";
 import { Download, Trash2, Mic, MicOff, Volume2, VolumeX, PanelLeft, PanelRight, X, Globe, ShieldCheck, Code2, FileText, Mail, HardDrive, Radio } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
@@ -134,8 +134,7 @@ function Jarvis() {
     if (busyRef.current || !WAKE.test(content)) return;
     busyRef.current = true; lastInteractionRef.current = Date.now(); setError(""); setCaption("");
     const nextMode = commandMode(content); setMode(nextMode);
-    if (nextMode === "develop") { setSystemOpen(false); setLogOpen(false); }
-    else if (nextMode === "briefing") { setSystemOpen(true); setLogOpen(true); }
+    if (nextMode !== "focus") { const panels = presentationPanels(nextMode); setSystemOpen(panels.system); setLogOpen(panels.log); }
     const history = [...messagesRef.current, { role: "user" as const, content, ts: Date.now() }].slice(-MAX_MEM);
     messagesRef.current = history; setMessages(history); setState("thinking");
     const ctrl = new AbortController(); abortRef.current = ctrl;
@@ -217,6 +216,7 @@ function Jarvis() {
   const exportMem = () => { const url = URL.createObjectURL(new Blob([JSON.stringify(messages, null, 2)], { type: "application/json" })); const a = document.createElement("a"); a.href = url; a.download = `jarvis_memoria_${new Date().toISOString().slice(0, 10)}.json`; a.click(); URL.revokeObjectURL(url); };
   const lastSources = [...messages].reverse().find((m) => m.role === "assistant")?.sources ?? [];
   return <div className="jarvis-shell" data-mode={mode}>
+    {mode === "briefing" && <div className="briefing-topics" aria-label="Temas do relatório">{BRIEFING_TOPICS.map((topic, i) => <span key={topic}><span className="hud-label">0{i + 1}</span>{topic}</span>)}</div>}
     <header className="app-header"><div className="flex items-center gap-3"><span className="brand-mark" aria-hidden="true">J</span><div><h1 className="font-display text-xl">J.A.R.V.I.S.</h1><div className="text-xs text-muted-foreground">{user?.email ?? "PERSONAL INTELLIGENCE"}</div></div></div><div className="header-status"><span className={`status-dot ${state === "error" ? "status-error" : ""}`} />{STATE_LABEL[state]}</div><div className="flex gap-1"><Button variant="ghost" size="icon" aria-label="Alternar painel Sistema" title="Sistema" onClick={() => setSystemOpen(!systemOpen)} aria-pressed={systemOpen}><PanelLeft /></Button><Button variant="ghost" size="icon" aria-label="Alternar painel Registro" title="Registro" onClick={() => setLogOpen(!logOpen)} aria-pressed={logOpen}><PanelRight /></Button><Button variant="ghost" size="icon" aria-label="Conexões pessoais" title="Conexões pessoais" onClick={() => setConnectionsOpen(true)}><ShieldCheck /></Button></div></header>
     <div className={`workspace ${systemOpen ? "with-system" : ""} ${logOpen ? "with-log" : ""}`}>
       {systemOpen && <aside className="system-panel panel-reveal" aria-label="Sistema"><div className="panel-heading"><span className="hud-label">Sistema</span><span className="text-xs text-muted-foreground">01 / LIVE</span></div><div className="grid grid-cols-2 gap-3"><ClockWidget /><StatusWidget state={STATE_LABEL[state]} mem={messages.length} max={MAX_MEM} /><WeatherWidget /><NewsWidget /></div><div className="mt-5 flex justify-between border-t border-border pt-3"><Button variant="ghost" size="sm" onClick={exportMem} disabled={!messages.length}><Download />Exportar</Button><Button variant="ghost" size="icon" aria-label="Limpar memória" title="Limpar memória" disabled={!messages.length || busyRef.current} onClick={() => { if (window.confirm("Apagar todas as conversas deste navegador?")) { messagesRef.current = []; setMessages([]); setCaption(""); } }}><Trash2 /></Button></div></aside>}

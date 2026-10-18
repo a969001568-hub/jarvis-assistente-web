@@ -1,4 +1,9 @@
 export type ViewMode = "focus" | "develop" | "briefing";
+export const BRIEFING_TOPICS = ["Política", "Basquete", "Clima"] as const;
+export const BRIEFING_INSTRUCTIONS = "Faça um boletim falado de hoje em 5 a 7 frases, cobrindo obrigatoriamente política, basquete e clima de São Paulo e Santana de Parnaíba; inclua futebol quando houver informação relevante. Cite os veículos consultados, diferencie jogos previstos de resultados e não presuma partidas hoje. Se faltar informação de um tema, diga explicitamente que ela não está disponível. Não presuma atividades pessoais sem dados explicitamente fornecidos.";
+export function presentationPanels(mode: ViewMode) {
+  return { system: mode === "focus", log: false };
+}
 export function commandMode(text: string): ViewMode {
   if (/desenvolva[.!?\s]*$/i.test(text)) return "develop";
   if (/como (?:foi|est[aá]) meu dia|como estamos (?:pra|para) hoje|relat[oó]rio (?:do dia|di[aá]rio)|resumo (?:do dia|de hoje)/i.test(text)) return "briefing";

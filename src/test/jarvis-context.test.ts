@@ -1,8 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { commandMode } from "@/lib/jarvis-context";
+import { BRIEFING_TOPICS, commandMode, presentationPanels } from "@/lib/jarvis-context";
+import { googleSignInOptions } from "@/lib/google-auth";
 import { decodePCM } from "@/lib/stream-speech";
 
 describe("JARVIS voice commands", () => {
+  it("opens an unframed daily presentation without either sidebar", () => {
+    expect(presentationPanels(commandMode("Jarvis relatório do dia"))).toEqual({system:false,log:false});
+  });
+  it("includes the requested daily report subjects", () => {
+    expect(BRIEFING_TOPICS).toEqual(["Política", "Basquete", "Clima"]);
+  });
+  it("lets any Google account be selected without a preset email", () => {
+    expect(googleSignInOptions("https://jarvis-assistente-web.lovable.app")).toEqual({redirect_uri:"https://jarvis-assistente-web.lovable.app",extraParams:{prompt:"select_account"}});
+  });
   it("opens development only for a final command", () => {
     expect(commandMode("Jarvis melhore seu código, desenvolva.")).toBe("develop");
     expect(commandMode("Jarvis desenvolva uma ideia sobre esportes")).toBe("focus");

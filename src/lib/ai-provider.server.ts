@@ -5,7 +5,7 @@ export type ChatProvider = { name: string; url: string; key: string; model: stri
  * user only needs to paste AI_API_KEY; AI_BASE_URL / AI_MODEL override the defaults.
  */
 const KNOWN: { test: RegExp; name: string; base: string; model: string; maxContext: number }[] = [
-  { test: /^gsk_/, name: "Groq", base: "https://api.groq.com/openai/v1", model: "llama-3.3-70b-versatile", maxContext: 22000 },
+  { test: /^gsk_/, name: "Groq", base: "https://api.groq.com/openai/v1", model: "openai/gpt-oss-120b", maxContext: 22000 },
   { test: /^AIza/, name: "Google Gemini", base: "https://generativelanguage.googleapis.com/v1beta/openai", model: "gemini-2.5-flash", maxContext: 60000 },
   { test: /^sk-or-/, name: "OpenRouter", base: "https://openrouter.ai/api/v1", model: "meta-llama/llama-3.3-70b-instruct:free", maxContext: 40000 },
 ];

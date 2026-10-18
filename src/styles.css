@@ -33,16 +33,20 @@
 @media (max-width: 1100px) { .workspace.with-system.with-log { grid-template-columns: 245px minmax(0,1fr); }.workspace.with-system.with-log .log-panel { grid-column: 1 / -1; max-height: 550px; padding: 25px 0; border-left: 0; border-top: 1px solid var(--border); }.workspace.with-system { grid-template-columns: 245px minmax(0,1fr); }.clock-widget .text-4xl { font-size: 28px; } }
 @media (max-width: 700px) { .jarvis-shell { padding: 0 16px; }.app-header { height: 82px; }.header-status { display: none; }.app-header h1 { font-size: 16px; }.workspace.with-system, .workspace.with-log, .workspace.with-system.with-log { display: flex; flex-direction: column; }.core-stage { order: 0; min-height: 670px; }.system-panel { order: 1; padding: 24px 0; border-right: 0; border-top: 1px solid var(--border); }.log-panel { order: 2; max-height: 600px; padding: 25px 0; border-left: 0; border-top: 1px solid var(--border); }.core-experience { padding: 20px 10px 35px; }.stage-top { padding: 23px 0; }.stage-footer { padding: 15px 0; }.core-orbit { width: 310px; }.captions { font-size: 18px; }.widget { min-height: 140px; }.clock-widget .text-4xl { font-size: 36px; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
-.jarvis-shell[data-mode=develop] .core-stage { overflow: hidden; }
-.jarvis-shell[data-mode=develop] .core-experience { animation: neural-expand 1.5s ease both; }
-.jarvis-shell[data-mode=develop] .core-orbit { width: 500px; }
-.jarvis-shell[data-mode=develop] .reactor { width: 390px; height: 390px; }
-.jarvis-shell[data-mode=develop] .r3 { animation: spin 4s linear infinite; border-style: dashed; }
-.jarvis-shell[data-mode=develop] .r4 { animation: spin 7s linear infinite reverse; }
-.jarvis-shell[data-mode=develop] .core-stage::after { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(0deg,transparent 0 70px,var(--grid-line) 71px 72px); pointer-events: none; animation: neural-scan 5s linear infinite; }
+.jarvis-shell:is([data-mode=develop],[data-mode=briefing]) .core-stage { overflow: hidden; }
+.jarvis-shell:is([data-mode=develop],[data-mode=briefing]) .core-experience { animation: neural-expand 1.5s ease both; }
+.jarvis-shell:is([data-mode=develop],[data-mode=briefing]) .core-orbit { width: 500px; }
+.jarvis-shell:is([data-mode=develop],[data-mode=briefing]) .reactor { width: 390px; height: 390px; }
+.jarvis-shell:is([data-mode=develop],[data-mode=briefing]) .r3 { animation: spin 4s linear infinite; border-style: dashed; }
+.jarvis-shell:is([data-mode=develop],[data-mode=briefing]) .r4 { animation: spin 7s linear infinite reverse; }
+.jarvis-shell:is([data-mode=develop],[data-mode=briefing]) .core-stage::after { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(0deg,transparent 0 70px,var(--grid-line) 71px 72px); pointer-events: none; animation: neural-scan 5s linear infinite; }
+.briefing-topics { position: absolute; z-index: 1; top: 160px; left: 50%; transform: translateX(-50%); display: flex; justify-content: center; gap: 36px; width: min(90%, 500px); pointer-events: none; }
+.briefing-topics > span { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--foreground); animation: panel-enter 1s ease both; }
+.briefing-topics > span:nth-child(2) { animation-delay: .15s; }.briefing-topics > span:nth-child(3) { animation-delay: .3s; }
+.jarvis-shell[data-mode=briefing] .core-experience { padding-top: 85px; }
 .connections-dialog { max-height: 90dvh; overflow-y: auto; }
 .app-header > div:first-child { min-width: 0; }.app-header > div:first-child > div { min-width: 0; }.app-header .text-xs { overflow-wrap: anywhere; }
 @keyframes neural-expand { from { opacity: .4; transform: scale(.85); } to { opacity: 1; transform: scale(1); } }
 @keyframes neural-scan { from { transform: translateY(-70px); } to { transform: translateY(70px); } }
-@media (max-width:700px) { .jarvis-shell[data-mode=develop] .core-orbit { width: 320px; }.jarvis-shell[data-mode=develop] .reactor { width: 280px; height: 280px; } }
-@media (prefers-reduced-motion:reduce) { .jarvis-shell[data-mode=develop] .core-stage::after { animation: none; }.jarvis-shell[data-mode=develop] .core-experience, .jarvis-shell[data-mode=develop] .r3, .jarvis-shell[data-mode=develop] .r4 { animation: none; } }
+@media (max-width:700px) { .jarvis-shell:is([data-mode=develop],[data-mode=briefing]) .core-orbit { width: 320px; }.jarvis-shell:is([data-mode=develop],[data-mode=briefing]) .reactor { width: 280px; height: 280px; }.briefing-topics { top: 147px; gap: 16px; }.briefing-topics > span { font-size: 12px; } }
+@media (prefers-reduced-motion:reduce) { .jarvis-shell:is([data-mode=develop],[data-mode=briefing]) .core-stage::after { animation: none; }.jarvis-shell:is([data-mode=develop],[data-mode=briefing]) .core-experience, .jarvis-shell:is([data-mode=develop],[data-mode=briefing]) .r3, .jarvis-shell:is([data-mode=develop],[data-mode=briefing]) .r4, .briefing-topics > span { animation: none; } }

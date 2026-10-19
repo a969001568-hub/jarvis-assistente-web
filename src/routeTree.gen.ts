@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as ApiNewsRouteImport } from './routes/api/news'
+import { Route as ApiSelfReviewRouteImport } from './routes/api/self-review'
 import { Route as ApiSpeechRouteImport } from './routes/api/speech'
 import { Route as ApiOauthGoogleReturnRouteImport } from './routes/api/oauth/google/return'
 
@@ -36,6 +37,11 @@ const ApiNewsRoute = ApiNewsRouteImport.update({
   path: '/api/news',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiSelfReviewRoute = ApiSelfReviewRouteImport.update({
+  id: '/api/self-review',
+  path: '/api/self-review',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiSpeechRoute = ApiSpeechRouteImport.update({
   id: '/api/speech',
   path: '/api/speech',
@@ -52,6 +58,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/api/chat': typeof ApiChatRoute
   '/api/news': typeof ApiNewsRoute
+  '/api/self-review': typeof ApiSelfReviewRoute
   '/api/speech': typeof ApiSpeechRoute
   '/api/oauth/google/return': typeof ApiOauthGoogleReturnRoute
 }
@@ -60,6 +67,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/api/chat': typeof ApiChatRoute
   '/api/news': typeof ApiNewsRoute
+  '/api/self-review': typeof ApiSelfReviewRoute
   '/api/speech': typeof ApiSpeechRoute
   '/api/oauth/google/return': typeof ApiOauthGoogleReturnRoute
 }
@@ -69,6 +77,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/api/chat': typeof ApiChatRoute
   '/api/news': typeof ApiNewsRoute
+  '/api/self-review': typeof ApiSelfReviewRoute
   '/api/speech': typeof ApiSpeechRoute
   '/api/oauth/google/return': typeof ApiOauthGoogleReturnRoute
 }
@@ -79,6 +88,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/api/chat'
     | '/api/news'
+    | '/api/self-review'
     | '/api/speech'
     | '/api/oauth/google/return'
   fileRoutesByTo: FileRoutesByTo
@@ -87,6 +97,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/api/chat'
     | '/api/news'
+    | '/api/self-review'
     | '/api/speech'
     | '/api/oauth/google/return'
   id:
@@ -95,6 +106,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/api/chat'
     | '/api/news'
+    | '/api/self-review'
     | '/api/speech'
     | '/api/oauth/google/return'
   fileRoutesById: FileRoutesById
@@ -104,6 +116,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   ApiChatRoute: typeof ApiChatRoute
   ApiNewsRoute: typeof ApiNewsRoute
+  ApiSelfReviewRoute: typeof ApiSelfReviewRoute
   ApiSpeechRoute: typeof ApiSpeechRoute
   ApiOauthGoogleReturnRoute: typeof ApiOauthGoogleReturnRoute
 }
@@ -138,6 +151,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiNewsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/self-review': {
+      id: '/api/self-review'
+      path: '/api/self-review'
+      fullPath: '/api/self-review'
+      preLoaderRoute: typeof ApiSelfReviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/speech': {
       id: '/api/speech'
       path: '/api/speech'
@@ -160,6 +180,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   ApiChatRoute: ApiChatRoute,
   ApiNewsRoute: ApiNewsRoute,
+  ApiSelfReviewRoute: ApiSelfReviewRoute,
   ApiSpeechRoute: ApiSpeechRoute,
   ApiOauthGoogleReturnRoute: ApiOauthGoogleReturnRoute,
 }

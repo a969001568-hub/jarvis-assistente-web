@@ -9,6 +9,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { readPersonalData } from "@/lib/personal.functions";
 import { useJarvisAuth } from "@/lib/auth-context";
 import { PersonalConnections } from "@/components/PersonalConnections";
+import { SelfReview } from "@/components/SelfReview";
 
 export const Route = createFileRoute("/")({
   head: () => ({ meta: [
@@ -27,9 +28,13 @@ const MAX_MEM = 2000;
 const STATE_LABEL: Record<State, string> = { idle: "Em espera", listening: "Ouvindo", thinking: "Processando", speaking: "Falando", error: "Atenção" };
 const WAKE = /\b(jarvis|jarvi|jarbas|jarves|djarvis|jarvas)\b/i;
 const cleanForSpeech = (t: string) => t.replace(/https?:\/\/\S+/g, "").replace(/[*_`#>|]/g, "").replace(/\s+/g, " ").trim();
+// Closest browser voices to the film JARVIS: deep, calm male timbre, natural (neural) voices first.
+const JARVIS_VOICES = [/antonio.*natural/i, /donato|fabio|julio|humberto|valerio|nicolau|leonardo/i, /antonio/i, /duarte/i, /daniel|ricardo|felipe|male|masculin/i];
+let aiVoiceUnavailable = false;
 function pickVoice() {
-  const voices = window.speechSynthesis?.getVoices() ?? [];
-  return voices.find((v) => v.lang === "pt-BR" && /antonio|daniel|ricardo|felipe|male|masculin/i.test(v.name)) ?? voices.find((v) => v.lang === "pt-BR") ?? null;
+  const voices = (window.speechSynthesis?.getVoices() ?? []).filter((v) => v.lang.toLowerCase().startsWith("pt"));
+  for (const re of JARVIS_VOICES) { const hit = voices.find((v) => re.test(v.name)); if (hit) return hit; }
+  return voices.find((v) => v.lang === "pt-BR") ?? voices[0] ?? null;
 }
 function Jarvis() {
   const { user } = useJarvisAuth();
@@ -112,7 +117,7 @@ function Jarvis() {
     const synth = window.speechSynthesis;
     if (!synth || signal.aborted) return resolve();
     synth.cancel(); const u = new SpeechSynthesisUtterance(text); const v = pickVoice(); if (v) u.voice = v;
-    u.lang = "pt-BR"; u.rate = 1.05; u.pitch = 0.85;
+    u.lang = v?.lang ?? "pt-BR"; u.rate = 1.02; u.pitch = /female|feminin|maria|francisca|luciana|vit[oó]ria/i.test(v?.name ?? "") ? 0.6 : 0.82;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const finish = () => { clearTimeout(timer); signal.removeEventListener("abort", stop); chromeResolveRef.current = undefined; resolve(); };
     const stop = () => { synth.cancel(); finish(); };
@@ -123,12 +128,13 @@ function Jarvis() {
     const clean = cleanForSpeech(text); if (!clean) return;
     let started = false;
     const startedSpeech = () => { if (!signal.aborted) { started = true; setState("speaking"); onStart(); } };
+    if (aiVoiceUnavailable) return speakChrome(clean, startedSpeech, signal);
     try { const { streamSpeech } = await import("@/lib/stream-speech"); await streamSpeech("/api/speech", clean.slice(0, 2400), signal, startedSpeech); }
-    catch (e) {
+    catch {
       if (signal.aborted) return;
       // Never replay audio that the user has already heard.
       if (started) { setError("A reprodução de voz foi interrompida."); return; }
-      setError("Voz de IA indisponível; usando a voz do navegador.");
+      aiVoiceUnavailable = true;
       await speakChrome(clean, startedSpeech, signal);
     }
   }, [speakChrome]);
@@ -222,7 +228,7 @@ function Jarvis() {
     {mode === "briefing" && <BriefingBoot key={briefingRun} />}
     <header className="app-header"><div className="flex items-center gap-3"><span className="brand-mark" aria-hidden="true">J</span><div><h1 className="font-display text-xl">J.A.R.V.I.S.</h1><div className="text-xs text-muted-foreground">{user?.email ?? "PERSONAL INTELLIGENCE"}</div></div></div><div className="header-status"><span className={`status-dot ${state === "error" ? "status-error" : ""}`} />{STATE_LABEL[state]}</div><div className="flex gap-1"><Button variant="ghost" size="icon" aria-label="Alternar painel Sistema" title="Sistema" onClick={() => setSystemOpen(!systemOpen)} aria-pressed={systemOpen}><PanelLeft /></Button><Button variant="ghost" size="icon" aria-label="Alternar painel Registro" title="Registro" onClick={() => setLogOpen(!logOpen)} aria-pressed={logOpen}><PanelRight /></Button><Button variant="ghost" size="icon" aria-label="Conexões pessoais" title="Conexões pessoais" onClick={() => setConnectionsOpen(true)}><ShieldCheck /></Button></div></header>
     <div className={`workspace ${systemOpen ? "with-system" : ""} ${logOpen ? "with-log" : ""}`}>
-      {systemOpen && <aside className="system-panel panel-reveal" aria-label="Sistema"><div className="panel-heading"><span className="hud-label">Sistema</span><span className="text-xs text-muted-foreground">01 / LIVE</span></div><div className="grid grid-cols-2 gap-3"><ClockWidget /><StatusWidget state={STATE_LABEL[state]} mem={messages.length} max={MAX_MEM} /><WeatherWidget /><NewsWidget /></div><div className="mt-5 flex justify-between border-t border-border pt-3"><Button variant="ghost" size="sm" onClick={exportMem} disabled={!messages.length}><Download />Exportar</Button><Button variant="ghost" size="icon" aria-label="Limpar memória" title="Limpar memória" disabled={!messages.length || busyRef.current} onClick={() => { if (window.confirm("Apagar todas as conversas deste navegador?")) { messagesRef.current = []; setMessages([]); setCaption(""); } }}><Trash2 /></Button></div></aside>}
+      {systemOpen && <aside className="system-panel panel-reveal" aria-label="Sistema"><div className="panel-heading"><span className="hud-label">Sistema</span><span className="text-xs text-muted-foreground">01 / LIVE</span></div><div className="grid grid-cols-2 gap-3"><ClockWidget /><StatusWidget state={STATE_LABEL[state]} mem={messages.length} max={MAX_MEM} /><WeatherWidget /><NewsWidget /></div><SelfReview idle={(state === "idle" || state === "listening") && !interim} /><div className="mt-5 flex justify-between border-t border-border pt-3"><Button variant="ghost" size="sm" onClick={exportMem} disabled={!messages.length}><Download />Exportar</Button><Button variant="ghost" size="icon" aria-label="Limpar memória" title="Limpar memória" disabled={!messages.length || busyRef.current} onClick={() => { if (window.confirm("Apagar todas as conversas deste navegador?")) { messagesRef.current = []; setMessages([]); setCaption(""); } }}><Trash2 /></Button></div></aside>}
       <main className="core-stage"><div className="stage-top"><span className="hud-label">{mode === "develop" ? "Ambiente de desenvolvimento" : mode === "briefing" ? "Relatório do dia" : "Interface neural"}</span><span className="text-xs text-muted-foreground">J / 01</span></div><div className="core-experience"><div className="core-orbit"><span className="orbit-cross cross-top" /><span className="orbit-cross cross-bottom" /><span className="orbit-caption">VOICE LINK</span><Button variant="ghost" className="reactor" disabled={!supported} onClick={() => state === "listening" || state === "speaking" || state === "thinking" ? stopAll() : startListening()} data-state={state} aria-label={state === "listening" || state === "speaking" || state === "thinking" ? "Parar" : "Falar com o JARVIS"}><span className="ring r1" /><span className="ring r2" /><span className="ring r3" /><span className="ring r4" /><span className="core"><span className="core-symbol">J</span></span></Button><span className="orbit-caption caption-bottom">{handsFree ? "ESCUTA ATIVA" : "STANDBY"}</span></div><div className="spectrum" data-active={state === "speaking" || state === "listening"} aria-hidden="true">{Array.from({ length: 31 }, (_, i) => <span key={i} />)}</div><div className="hud-label state-label">{STATE_LABEL[state]}</div><div className="captions" aria-live="polite">{interim || caption ? <p>{interim || caption}</p> : <div><p className="text-2xl text-foreground">À sua disposição.</p><p className="mt-2 text-sm text-muted-foreground">{supported ? "Jarvis, como estamos pra hoje?" : "Reconhecimento de voz indisponível neste navegador."}</p></div>}</div>{error && <p className="error-message" role="alert">{error}</p>}<div className="voice-controls"><Button variant="ghost" size="icon" aria-label="Conversas espontâneas" title="Conversas espontâneas após cinco minutos" aria-pressed={proactive} onClick={() => setProactive(!proactive)}><Radio className={proactive ? "text-primary" : "text-muted-foreground"} /></Button><Button variant={handsFree ? "secondary" : "outline"} onClick={toggleHandsFree} disabled={!supported} aria-pressed={handsFree}>{handsFree ? <Mic /> : <MicOff />}{handsFree ? "Mãos livres ativo" : "Ativar mãos livres"}</Button><Button variant="ghost" size="icon" aria-label={voiceOn ? "Desativar voz" : "Ativar voz"} title={voiceOn ? "Desativar voz" : "Ativar voz"} aria-pressed={voiceOn} onClick={() => { voiceRef.current = !voiceOn; setVoiceOn(!voiceOn); if (voiceOn) { speechAbortRef.current?.abort(); window.speechSynthesis?.cancel(); chromeResolveRef.current?.(); } }}>{voiceOn ? <Volume2 /> : <VolumeX />}</Button></div></div>{mode === "briefing" && <BriefingHud key={briefingRun} />}<div className="stage-footer"><span><Globe className="size-3" />Web sob consulta</span><span><ShieldCheck className="size-3" />Memória neste navegador</span></div></main>
       {logOpen && <aside className="log-panel panel-reveal" aria-label="Registro"><div className="panel-heading"><span className="hud-label">Registro</span><span className="text-xs text-muted-foreground">{messages.length} ENTRADAS</span></div><div ref={logRef} className="transcript"><div className="session-marker">CONVERSA LOCAL</div>{!messages.length && <p className="mt-5 text-sm text-muted-foreground">Nenhuma conversa ainda.</p>}{messages.map((m, i) => <div key={`${m.ts}-${i}`} className={`log-message ${m.role}`}><div className="flex justify-between text-xs text-muted-foreground"><span>{m.role === "user" ? "VOCÊ" : "J.A.R.V.I.S."}</span><span>{m.ts ? new Date(m.ts).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : ""}</span></div><p className="mt-2 whitespace-pre-wrap break-words text-base leading-relaxed">{m.content}</p></div>)}</div>{lastSources.length > 0 && <div className="sources"><div className="hud-label mb-3">Fontes consultadas</div>{lastSources.slice(0, 3).map((s) => <a key={s.url + s.title} href={s.url} target="_blank" rel="noreferrer" className="mb-2 block line-clamp-2 text-xs text-muted-foreground hover:text-primary">{s.title}</a>)}</div>}</aside>}
     </div>

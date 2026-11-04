@@ -1,7 +1,7 @@
 # JARVIS reconstruction
-- [ ] Remove the preset Google email and verify account selection; preserve per-user private connections.
-- [ ] Present daily reports with the full-width cinematic animation and politics, basketball and weather indicators.
-- [ ] Explain the unlimited-AI limitation without switching to another credit-limited service or bypassing paused access.
+- [x] Remove the preset Google email; unit-tested account-neutral selection and verified authenticated Gmail consent opens at Google. External Google app publishing/verification remains owner-controlled.
+- [x] Present daily reports with the full-width cinematic animation and politics, basketball and weather indicators; verified simulated voice command and desktop/narrow layouts without live AI calls. Reel contents could not be visually verified.
+- [x] Explain the unlimited-AI limitation without switching to another credit-limited service or bypassing paused access; retain current AI.
 - [x] Add Google login and encrypted per-user authorization flow. Verified real authenticated state, status read, sign-out and authorization redirect to Google.
 - [x] Fix unreliable headlines with independent publisher feeds; verified all four categories display real rows.
 - [x] Hide sidebars for development animation; keep safe self-code review.

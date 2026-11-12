@@ -15,3 +15,8 @@
 - [x] Verify simulated voice-command recognition, panel opening, browser memory restoration, live headlines/weather, narrow layouts and audio-before-caption ordering; seven automated tests passed.
 - [ ] Verify actual AI briefing, source review and synthesized voice end-to-end: blocked by gateway response "Not enough credits"; no further live AI calls made.
 - [ ] Verify Gmail/Drive/Docs private data reads end-to-end: waits for user to finish Google consent in each Conectar popup; no private connector keys saved yet. WhatsApp/Instagram login unsupported in Cloud.
+- [x] Live weather and top-result page reading in every answer; prompt forbids claiming no real-time data.
+- [x] Prefer ElevenLabs calm British stock voice with silent fallback; no cloning of the actor's voice.
+- [x] Spontaneous hands-free prompts every four minutes of silence.
+- [ ] Autonomous self-editing of code while idle/offline: not implemented (no safe write path; review-only remains).
+- [ ] ElevenLabs voice active: waits for the user to link an ElevenLabs connection.

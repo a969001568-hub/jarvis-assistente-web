@@ -12,7 +12,7 @@
 ## Architecture
 - AI chat lives in the server route src/routes/api/chat.ts (Lovable AI Gateway, NDJSON stream); keys stay server-side.
 - Web search uses keyless RSS (Bing + Google News) on every user message; no search API key needed.
-- Voice input uses the browser Web Speech API; voice output streams AI TTS from src/routes/api/speech.ts, falling back to Chrome speechSynthesis on failure.
+- Voice input uses the browser Web Speech API; /api/speech prefers an ElevenLabs stock voice when linked (re-framed as the same PCM SSE events), then AI Gateway TTS, then silent fallback to browser speechSynthesis.
 - Conversation memory is kept in localStorage (limited, exportable as JSON).
 - Voice command modes and forecast parsing share browser-safe helpers, so briefing and widgets use consistent locations and conditions.
 - Voice callbacks dispatch through refs and restart timers are canceled on Stop, so continuous listening cannot revive stale requests.
@@ -20,5 +20,6 @@
 - Google login uses managed Cloud Auth with one root session subscriber; personal connections use authenticated server functions and encrypted per-user connector keys, never shared credentials.
 - Google sign-in options are browser-safe and account-neutral; cinematic voice modes share panel rules so daily reports and development can occupy the full stage.
 - Auth initialization handles synchronous configuration failures and asynchronous session errors so unavailable login never blanks public screens.
-- Headlines read independent publisher feeds; public article reads use a fixed HTTPS publisher allowlist with redirects disabled and bounded response bodies to prevent private-network fetches.
+- Headlines read independent publisher feeds; public page reads accept any public HTTPS host but reject IP literals, internal names, ports and credentials, re-validate each redirect hop and bound bodies.
+- Weather questions inject live Open-Meteo readings (default places plus a geocoded mentioned city) so the assistant never claims to lack real-time data.
 - Proactive hands-free prompts use browser speech only, never billed AI calls; durable AI failure state prevents provider-denial retries and automated credit exhaustion.

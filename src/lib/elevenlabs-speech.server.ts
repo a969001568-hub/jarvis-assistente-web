@@ -1,5 +1,6 @@
 // Server-only ElevenLabs TTS. Uses a stock library voice (no cloning of real
 // people) and converts the raw PCM stream into speech.audio.delta SSE events.
+import { VOICE_PROFILE } from "./voice-profile";
 export const JARVIS_VOICE_ID = "onwK4e9ZLuTAKqWW03F9"; // "Daniel": calm, deep, British broadcaster
 
 export function toBase64(bytes: Uint8Array): string {
@@ -19,7 +20,7 @@ export async function elevenLabsSpeech(text: string, signal: AbortSignal): Promi
       text,
       model_id: "eleven_multilingual_v2",
       language_code: "pt",
-      voice_settings: { stability: 0.55, similarity_boost: 0.8, style: 0.15, use_speaker_boost: true, speed: 1.05 },
+      voice_settings: { stability: VOICE_PROFILE.stability, similarity_boost: VOICE_PROFILE.similarity, style: VOICE_PROFILE.style, use_speaker_boost: true, speed: VOICE_PROFILE.rate },
     }),
   });
   if (!upstream.ok || !upstream.body) {

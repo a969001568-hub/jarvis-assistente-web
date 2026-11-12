@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { requestSpeech } from "@/lib/speech-request.server";
+import { VOICE_DIRECTION } from "@/lib/voice-profile";
 
 export const Route = createFileRoute("/api/speech")({
   server: {
@@ -19,10 +20,7 @@ export const Route = createFileRoute("/api/speech")({
         }
         const apiKey = process.env["LOVABLE_API_KEY"];
         if (!apiKey) return Response.json({ error: "Chave de IA não configurada." }, { status: 401 });
-        const prompt =
-          "Fale em português brasileiro de forma natural e conversacional, voz masculina calma, " +
-          "tom seco e levemente irônico, sem dramatizar nem exagerar a entonação. " +
-          "Ritmo fluido e um pouco ágil, emendando as frases, com pausas bem curtas nos pontos finais: " + text;
+        const prompt = VOICE_DIRECTION + text;
         try {
           const upstream = await requestSpeech(
             {

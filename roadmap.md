@@ -20,3 +20,8 @@
 - [x] Spontaneous hands-free prompts every four minutes of silence.
 - [ ] Autonomous self-editing of code while idle/offline: not implemented (no safe write path; review-only remains).
 - [ ] ElevenLabs voice active: waits for the user to link an ElevenLabs connection.
+
+## Approved source-copy review and calmer voice
+- [x] Add review below conversation records, concrete recommendation, approval and revised source ZIP download without live code edits.
+- [x] Centralize calm, fluent, moderately formal voice tuning.
+- [ ] Verify review and approved ZIP download end-to-end.

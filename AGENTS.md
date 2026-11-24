@@ -24,5 +24,5 @@
 - Weather questions inject live Open-Meteo readings (default places plus a geocoded mentioned city) so the assistant never claims to lack real-time data.
 - Proactive hands-free prompts use browser speech only, never billed AI calls; durable AI failure state prevents provider-denial retries and automated credit exhaustion.
 
-- Source improvement uses an explicit bundled source-only copy and deterministic compatible edits, downloaded only after review approval; live code is never written or deployed by the app.
+- Source improvement uses an explicit JSON source-only snapshot refreshed with scripts/refresh-source-copy.py after code edits and deterministic compatible edits, downloaded only after review approval; live code is never written or deployed by the app.
 - Voice tuning lives in one browser-safe profile shared by browser playback and server speech to keep reviewed changes consistent.

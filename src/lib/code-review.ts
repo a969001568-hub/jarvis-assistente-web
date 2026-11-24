@@ -11,5 +11,7 @@ export function reviewSource(files: Record<string, string>): CodeReview {
 export function revisedSource(files: Record<string, string>, approvedId: string): Record<string, string> {
   if (approvedId !== REVIEW_ID) throw new Error("Confirme a revisão antes de criar a cópia.");
   const review = reviewSource(files);
-  return { ...files, [review.file]: files[review.file].replace(review.before, review.after) };
+  const original = files[review.file];
+  if (!original) throw new Error("Arquivo de voz não encontrado.");
+  return { ...files, [review.file]: original.replace(review.before, review.after) };
 }

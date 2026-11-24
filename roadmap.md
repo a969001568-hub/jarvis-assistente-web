@@ -25,3 +25,10 @@
 - [x] Add review below conversation records, concrete recommendation, approval and revised source ZIP download without live code edits.
 - [x] Centralize calm, fluent, moderately formal voice tuning.
 - [x] Verify review and approved ZIP download end-to-end at desktop and 809px: source ZIP has approved edit and no environment or repository files; 12 unit tests passed. Synthesized audio remains unverified while AI credits and ElevenLabs connection are unavailable.
+
+## Owner-approved evolution and AI command center
+- [ ] Test real ElevenLabs voice and remove avoidable phrase/stream gaps.
+- [ ] Enable verified owner account updates with protected roles and supported runtime patches, approval, and rollback.
+- [ ] Add in-app voice test and install area; retain source-copy download for code-only changes.
+- [ ] Reimagine the voice-first central scene using referenced creators as visual inspiration.
+- [ ] Verify authenticated install/read-back, non-owner denial and desktop/mobile experience.

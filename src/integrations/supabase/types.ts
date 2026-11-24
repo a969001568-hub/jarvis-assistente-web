@@ -65,15 +65,104 @@ export type Database = {
         }
         Relationships: []
       }
+      jarvis_runtime: {
+        Row: {
+          focus_layout: boolean
+          id: boolean
+          revision: number
+          updated_at: string
+          voice_rate: number
+        }
+        Insert: {
+          focus_layout?: boolean
+          id?: boolean
+          revision?: number
+          updated_at?: string
+          voice_rate?: number
+        }
+        Update: {
+          focus_layout?: boolean
+          id?: boolean
+          revision?: number
+          updated_at?: string
+          voice_rate?: number
+        }
+        Relationships: []
+      }
+      jarvis_update_history: {
+        Row: {
+          actor_id: string
+          before_focus: boolean
+          before_rate: number
+          created_at: string
+          id: string
+          patch_id: string
+          revision: number
+          rolled_back: boolean
+        }
+        Insert: {
+          actor_id: string
+          before_focus: boolean
+          before_rate: number
+          created_at?: string
+          id?: string
+          patch_id: string
+          revision: number
+          rolled_back?: boolean
+        }
+        Update: {
+          actor_id?: string
+          before_focus?: boolean
+          before_rate?: number
+          created_at?: string
+          id?: string
+          patch_id?: string
+          revision?: number
+          rolled_back?: boolean
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      install_jarvis_update: {
+        Args: { p_rollback?: boolean; p_update: string }
+        Returns: Json
+      }
+      jarvis_owner_email_matches: {
+        Args: { p_confirmed: string; p_email: string }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -200,6 +289,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "user"],
+    },
   },
 } as const
